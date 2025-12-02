@@ -21,10 +21,10 @@ extension _UIEnvironmentsContaining {
         let overrides = _environmentOverrides?.storage ?? [:]
 
         return sequence(first: next, next: { $0?.next })
-            .compactMap({ next in
+            .compactMap { next in
                 let containable = next as? _UIEnvironmentsContaining
                 return containable?._environmentOverrides
-            })
+            }
             .reduce(overrides) { result, overrides in
                 result.merging(
                     overrides.storage,

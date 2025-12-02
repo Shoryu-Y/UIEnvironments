@@ -8,7 +8,7 @@ public struct UIEnvironmentChangeRegistration: Sendable {
         definitions: [any UIEnvironmentDefinition.Type],
         action: @Sendable @escaping () -> Void,
     ) {
-        identifiers = definitions.map({ ObjectIdentifier($0) })
+        identifiers = definitions.map { ObjectIdentifier($0) }
         self.action = action
     }
 

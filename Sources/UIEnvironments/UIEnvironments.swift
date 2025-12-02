@@ -1,12 +1,10 @@
 import UIKit
 
-
 /// A container that provides read-only access to environment values
 /// resolved for a specific responder, such as a `UIView`,
 /// `UIViewController`, `UIWindow`, or `UIWindowScene`.
 ///
 @MainActor public class UIEnvironments {
-
     /// Returns the current value associated with the given environment definition.
     ///
     /// Pass an environment definition type and read its value for the receiver,
@@ -41,11 +39,11 @@ import UIKit
     private var cache: [ObjectIdentifier: Sendable]?
 
     func onChanged(_ overrides: UIEnvironmentOverrides) {
-        let registrationsNeedUpdate = registrations.filter({ registration in
+        let registrationsNeedUpdate = registrations.filter { registration in
             registration.identifiers.contains(where: { id in
                 overrides.storage.keys.contains(where: { $0 == id })
             })
-        })
+        }
 
         if registrationsNeedUpdate.isEmpty {
             return

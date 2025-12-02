@@ -1,7 +1,7 @@
 import ObjectiveC
 import UIKit
 
-nonisolated(unsafe) private let _environmentsKey = malloc(1)!
+private nonisolated(unsafe) let _environmentsKey = malloc(1)!
 
 extension UIView: _UIEnvironmentsContaining {
     var _environments: UIEnvironments {
