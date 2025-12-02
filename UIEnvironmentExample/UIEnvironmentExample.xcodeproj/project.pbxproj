@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		34A54E8B2EDF4E7F004944A5 /* UIEnvironments in Frameworks */ = {isa = PBXBuildFile; productRef = 34A54E8A2EDF4E7F004944A5 /* UIEnvironments */; };
+		34FCBAAC2EDF6B08005F749A /* UIEnvironments in Frameworks */ = {isa = PBXBuildFile; productRef = 34FCBAAB2EDF6B08005F749A /* UIEnvironments */; };
+		34FCBAAE2EDF6B08005F749A /* UIEnvironmentsMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 34FCBAAD2EDF6B08005F749A /* UIEnvironmentsMacros */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +28,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				34A54E8B2EDF4E7F004944A5 /* UIEnvironments in Frameworks */,
+				34FCBAAC2EDF6B08005F749A /* UIEnvironments in Frameworks */,
+				34FCBAAE2EDF6B08005F749A /* UIEnvironmentsMacros in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +72,8 @@
 			);
 			name = UIEnvironmentExample;
 			packageProductDependencies = (
-				34A54E8A2EDF4E7F004944A5 /* UIEnvironments */,
+				34FCBAAB2EDF6B08005F749A /* UIEnvironments */,
+				34FCBAAD2EDF6B08005F749A /* UIEnvironmentsMacros */,
 			);
 			productName = UIEnvironmentExample;
 			productReference = 342B6DA72EDC75950087E5A6 /* UIEnvironmentExample.app */;
@@ -101,7 +104,7 @@
 			mainGroup = 342B6D9E2EDC75950087E5A6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				34A54E892EDF4E7F004944A5 /* XCLocalSwiftPackageReference "../../UIEnvironments" */,
+				34FCBAAA2EDF6B08005F749A /* XCLocalSwiftPackageReference "../../UIEnvironments" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 342B6DA82EDC75950087E5A6 /* Products */;
@@ -339,16 +342,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		34A54E892EDF4E7F004944A5 /* XCLocalSwiftPackageReference "../../UIEnvironments" */ = {
+		34FCBAAA2EDF6B08005F749A /* XCLocalSwiftPackageReference "../../UIEnvironments" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../../UIEnvironments;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		34A54E8A2EDF4E7F004944A5 /* UIEnvironments */ = {
+		34FCBAAB2EDF6B08005F749A /* UIEnvironments */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = UIEnvironments;
+		};
+		34FCBAAD2EDF6B08005F749A /* UIEnvironmentsMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = UIEnvironmentsMacros;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
