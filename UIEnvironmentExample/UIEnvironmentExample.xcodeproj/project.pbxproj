@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		342B6DED2EDDF6230087E5A6 /* UIEnvironment in Frameworks */ = {isa = PBXBuildFile; productRef = 342B6DEC2EDDF6230087E5A6 /* UIEnvironment */; };
+		34A54E8B2EDF4E7F004944A5 /* UIEnvironments in Frameworks */ = {isa = PBXBuildFile; productRef = 34A54E8A2EDF4E7F004944A5 /* UIEnvironments */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				342B6DED2EDDF6230087E5A6 /* UIEnvironment in Frameworks */,
+				34A54E8B2EDF4E7F004944A5 /* UIEnvironments in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,7 +70,7 @@
 			);
 			name = UIEnvironmentExample;
 			packageProductDependencies = (
-				342B6DEC2EDDF6230087E5A6 /* UIEnvironment */,
+				34A54E8A2EDF4E7F004944A5 /* UIEnvironments */,
 			);
 			productName = UIEnvironmentExample;
 			productReference = 342B6DA72EDC75950087E5A6 /* UIEnvironmentExample.app */;
@@ -101,7 +101,7 @@
 			mainGroup = 342B6D9E2EDC75950087E5A6;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				342B6DEB2EDDF6230087E5A6 /* XCLocalSwiftPackageReference "../UIEnvironment" */,
+				34A54E892EDF4E7F004944A5 /* XCLocalSwiftPackageReference "../../UIEnvironments" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 342B6DA82EDC75950087E5A6 /* Products */;
@@ -339,16 +339,16 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		342B6DEB2EDDF6230087E5A6 /* XCLocalSwiftPackageReference "../UIEnvironment" */ = {
+		34A54E892EDF4E7F004944A5 /* XCLocalSwiftPackageReference "../../UIEnvironments" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../UIEnvironment;
+			relativePath = ../../UIEnvironments;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		342B6DEC2EDDF6230087E5A6 /* UIEnvironment */ = {
+		34A54E8A2EDF4E7F004944A5 /* UIEnvironments */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UIEnvironment;
+			productName = UIEnvironments;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
