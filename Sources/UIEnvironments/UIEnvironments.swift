@@ -1,7 +1,19 @@
 import UIKit
 
-@MainActor
-public class UIEnvironments {
+
+/// A container that provides read-only access to environment values
+/// resolved for a specific responder, such as a `UIView`,
+/// `UIViewController`, `UIWindow`, or `UIWindowScene`.
+///
+@MainActor public class UIEnvironments {
+
+    /// Returns the current value associated with the given environment definition.
+    ///
+    /// Pass an environment definition type and read its value for the receiver,
+    /// taking into account any `environmentOverrides` set in the surrounding
+    /// view, view controller, or window scene hierarchy. If no value has been
+    /// provided, the definition's `defaultValue` is used.
+    ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
         let overriddenEnvironments: [ObjectIdentifier: Sendable]
 
@@ -14,6 +26,8 @@ public class UIEnvironments {
 
         return (overriddenEnvironments[ObjectIdentifier(type)] as? Key.Value) ?? Key.defaultValue
     }
+
+    // MARK: - Internal
 
     weak var owner: _UIEnvironmentsContaining!
 
