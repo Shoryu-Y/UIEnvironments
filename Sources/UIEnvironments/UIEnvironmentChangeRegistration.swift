@@ -2,11 +2,11 @@ import UIKit
 
 public struct UIEnvironmentChangeRegistration: Sendable {
     var identifiers: [ObjectIdentifier]
-    var action: @MainActor () -> Void
+    var action: @Sendable @MainActor () -> Void
 
     init(
         definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @MainActor () -> Void,
+        action: @Sendable @escaping @MainActor () -> Void
     ) {
         identifiers = definitions.map { ObjectIdentifier($0) }
         self.action = action

@@ -13,7 +13,7 @@ public extension UIView {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @MainActor () -> Void
+        action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
@@ -38,7 +38,7 @@ public extension UIViewController {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @MainActor () -> Void
+        action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
@@ -63,7 +63,7 @@ public extension UIWindowScene {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @MainActor () -> Void
+        action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
