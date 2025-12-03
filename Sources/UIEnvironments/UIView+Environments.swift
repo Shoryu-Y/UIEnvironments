@@ -10,9 +10,10 @@ public extension UIView {
         set { _environmentOverrides = newValue }
     }
 
+    @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable () -> Void
+        action: @escaping @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
@@ -34,9 +35,10 @@ public extension UIViewController {
         set { _environmentOverrides = newValue }
     }
 
+    @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable () -> Void
+        action: @escaping @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
@@ -58,9 +60,10 @@ public extension UIWindowScene {
         set { _environmentOverrides = newValue }
     }
 
+    @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable () -> Void
+        action: @escaping @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         environments.registrations.append(registration)
