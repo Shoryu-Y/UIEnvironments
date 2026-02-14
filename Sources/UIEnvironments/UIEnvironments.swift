@@ -13,8 +13,8 @@ import UIKit
     /// provided, the definition's `defaultValue` is used.
     ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
-        let overriddenEnvironments = owner._inheritedEnvironmentOverrides
-        return (overriddenEnvironments[ObjectIdentifier(type)] as? Key.Value) ?? Key.defaultValue
+        let identifier = ObjectIdentifier(type)
+        return (owner._inheritedEnvironmentOverrideValue(for: identifier) as? Key.Value) ?? Key.defaultValue
     }
 
     // MARK: - Internal

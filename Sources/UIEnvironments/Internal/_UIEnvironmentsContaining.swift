@@ -33,4 +33,23 @@ extension _UIEnvironmentsContaining {
                 )
             }
     }
+
+    func _inheritedEnvironmentOverrideValue(for identifier: ObjectIdentifier) -> Sendable? {
+        if let value = _environmentOverrides?.storage[identifier] {
+            return value
+        }
+
+        for responder in sequence(first: next, next: { $0?.next }) {
+            guard
+                let containable = responder as? _UIEnvironmentsContaining,
+                let value = containable._environmentOverrides?.storage[identifier]
+            else {
+                continue
+            }
+
+            return value
+        }
+
+        return nil
+    }
 }
