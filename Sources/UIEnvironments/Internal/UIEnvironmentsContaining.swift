@@ -97,7 +97,7 @@ extension UIView: _UIEnvironmentsContaining {
     /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         var containings = descendants()
-            .compactMap({ $0 as? any _UIEnvironmentsContaining })
+            .compactMap { $0 as? any _UIEnvironmentsContaining }
 
         if let window = self as? UIWindow, let rootViewController = window.rootViewController {
             containings.append(contentsOf: rootViewController.selfAndDescendantViewControllers())
@@ -124,7 +124,7 @@ extension UIViewController: _UIEnvironmentsContaining {
     /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let descendantsContaining = descendants()
-            .compactMap({ $0 as? any _UIEnvironmentsContaining })
+            .compactMap { $0 as? any _UIEnvironmentsContaining }
         let childViewControllers = children
             .flatMap { $0.selfAndDescendantViewControllers() }
             .compactMap { $0 as any _UIEnvironmentsContaining }
@@ -150,7 +150,7 @@ extension UIWindowScene: _UIEnvironmentsContaining {
     /// Notifies windows and descendants when scene-level overrides change.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let descendantsContaining = windows
-            .reduce([], { result, window in result + window.descendants() })
+            .reduce([]) { result, window in result + window.descendants() }
             .compactMap { $0 as? any _UIEnvironmentsContaining }
         let rootViewControllers = windows
             .compactMap(\.rootViewController)

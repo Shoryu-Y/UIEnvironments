@@ -164,6 +164,33 @@ final class ChildViewController: UIViewController {
   }
 ```
 
+### Hybrid migration mode (iOS 17+)
+
+`UIEnvironments` supports a staged migration path on iOS 17 and later.
+
+- If a definition conforms to both `UIEnvironmentDefinition` and `UITraitDefinition`,
+  reads/writes/observations are automatically bridged to native trait APIs.
+- Definitions that only conform to `UIEnvironmentDefinition` continue to use
+  the library's fallback mechanism.
+- Both kinds can be mixed in the same hierarchy.
+
+```swift
+struct ThemeEnvironment: UIEnvironmentDefinition {
+    static let defaultValue = Theme(
+        titleFont: .systemFont(ofSize: 12),
+        backgroundColor: .systemBackground
+    )
+}
+
+@available(iOS 17.0, *)
+extension ThemeEnvironment: UITraitDefinition {}
+```
+
+With this setup:
+
+- iOS 16 and earlier: fallback `UIEnvironments` behavior is used.
+- iOS 17 and later: `ThemeEnvironment` is handled by native traits automatically.
+
 ```diff
   final class ParentViewController: UIViewController {
       let childViewController = ChildViewController()

@@ -13,5 +13,5 @@ public protocol UIMutableEnvironments {
     ///
     /// Use this subscript to set or update environment values.
     ///
-    subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value { get set }
+    subscript<Key: UIEnvironmentDefinition>(_: Key.Type) -> Key.Value { get set }
 }

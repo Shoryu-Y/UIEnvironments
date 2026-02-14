@@ -1,8 +1,18 @@
 import Testing
+@testable import UIEnvironments
 import UIKit
+
+private struct TestFallbackEnvironment: UIEnvironmentDefinition {
+    static let defaultValue = 0
+}
 
 @available(iOS 17.0, *)
 private struct TestStringTrait: UITraitDefinition {
+    static let defaultValue = "default"
+}
+
+@available(iOS 17.0, *)
+private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDefinition {
     static let defaultValue = "default"
 }
 
@@ -104,4 +114,68 @@ private struct TestStringTrait: UITraitDefinition {
     parent.traitOverrides[TestStringTrait.self] = "v2"
 
     #expect(child.traitCollection[TestStringTrait.self] == TestStringTrait.defaultValue)
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func environmentOverrideWriteSyncsToNativeTraitOverrides() {
+    let view = UIView()
+
+    view.environmentOverrides[TestBridgedStringEnvironment.self] = "from-environment"
+
+    if UIEnvironments.isNativeTraitBridgeEnabled {
+        #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == "from-environment")
+    } else {
+        #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+    }
+
+    #expect(view.environments[TestBridgedStringEnvironment.self] == "from-environment")
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func environmentsReadPrefersNativeTraitCollectionForBridgedDefinitions() {
+    let view = UIView()
+
+    view.traitOverrides[TestBridgedStringEnvironment.self] = "initial"
+    if UIEnvironments.isNativeTraitBridgeEnabled {
+        #expect(view.environments[TestBridgedStringEnvironment.self] == "initial")
+    } else {
+        #expect(view.environments[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+    }
+
+    view.traitOverrides[TestBridgedStringEnvironment.self] = "native-updated"
+    if UIEnvironments.isNativeTraitBridgeEnabled {
+        #expect(view.environments[TestBridgedStringEnvironment.self] == "native-updated")
+    } else {
+        #expect(view.environments[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+    }
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func registerForEnvironmentChangesCanRegisterAndUnregisterBridgedDefinitions() {
+    let view = UIView()
+
+    let registration = view.registerForEnvironmentChanges([TestBridgedStringEnvironment.self]) {}
+    view.unregisterFromEnvironmentChanges(registration)
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func mixedNativeAndFallbackDefinitionsDoNotDuplicateCallbacks() {
+    let view = UIView()
+    var changeCount = 0
+
+    _ = view.registerForEnvironmentChanges(
+        [TestBridgedStringEnvironment.self, TestFallbackEnvironment.self]
+    ) {
+        changeCount += 1
+    }
+
+    view.traitOverrides[TestBridgedStringEnvironment.self] = "native"
+    #expect(changeCount == 0)
+
+    view.environmentOverrides[TestFallbackEnvironment.self] = 1
+    #expect(changeCount == 1)
 }
