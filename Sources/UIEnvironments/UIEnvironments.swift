@@ -39,17 +39,13 @@ import UIKit
     private var cache: [ObjectIdentifier: Sendable]?
 
     func onChanged(_ overrides: UIEnvironmentOverrides) {
+        cache = nil
+
         let registrationsNeedUpdate = registrations.filter { registration in
             registration.identifiers.contains(where: { id in
                 overrides.storage.keys.contains(where: { $0 == id })
             })
         }
-
-        if registrationsNeedUpdate.isEmpty {
-            return
-        }
-
-        cache = nil
         for registration in registrationsNeedUpdate {
             registration.action()
         }
