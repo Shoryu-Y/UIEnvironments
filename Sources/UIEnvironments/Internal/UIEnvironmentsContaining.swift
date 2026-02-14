@@ -1,9 +1,16 @@
 import ObjectiveC
 import UIKit
 
+/// Associated-object key used to attach `UIEnvironments` to UIKit responders.
 private nonisolated(unsafe) let _environmentsKey = malloc(1)!
 
 private extension UIResponder {
+    /// Collects leaf views reachable from the receiver without forcing view loading.
+    ///
+    /// - For `UIView`, this returns terminal descendants.
+    /// - For `UIViewController`, it traverses `viewIfLoaded`.
+    /// - For `UIWindow`, it traverses `rootViewController` if present.
+    ///
     func leafViews() -> [UIView] {
         var results: [UIView] = []
 
@@ -28,6 +35,10 @@ private extension UIResponder {
         return results
     }
 
+    /// Builds a responder set from each leaf back toward `self` via `next`.
+    ///
+    /// The receiver itself is excluded.
+    ///
     func descendants() -> Set<UIResponder> {
         var results: Set<UIResponder> = []
 
@@ -44,6 +55,7 @@ private extension UIResponder {
 }
 
 extension UIView: _UIEnvironmentsContaining {
+    /// Lazily creates and stores environments for this view.
     var _environments: UIEnvironments {
         if let environments = objc_getAssociatedObject(self, _environmentsKey) as? UIEnvironments {
             return environments
@@ -54,6 +66,7 @@ extension UIView: _UIEnvironmentsContaining {
         return environments
     }
 
+    /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let containings = descendants()
             .compactMap({ $0 as? _UIEnvironmentsContaining })
@@ -65,6 +78,7 @@ extension UIView: _UIEnvironmentsContaining {
 }
 
 extension UIViewController: _UIEnvironmentsContaining {
+    /// Lazily creates and stores environments for this view controller.
     var _environments: UIEnvironments {
         if let environments = objc_getAssociatedObject(self, _environmentsKey) as? UIEnvironments {
             return environments
@@ -75,6 +89,7 @@ extension UIViewController: _UIEnvironmentsContaining {
         return environments
     }
 
+    /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let containings = descendants()
             .compactMap({ $0 as? _UIEnvironmentsContaining })
@@ -86,6 +101,7 @@ extension UIViewController: _UIEnvironmentsContaining {
 }
 
 extension UIWindowScene: _UIEnvironmentsContaining {
+    /// Lazily creates and stores environments for this window scene.
     var _environments: UIEnvironments {
         if let environments = objc_getAssociatedObject(self, _environmentsKey) as? UIEnvironments {
             return environments
@@ -96,6 +112,7 @@ extension UIWindowScene: _UIEnvironmentsContaining {
         return environments
     }
 
+    /// Notifies windows and descendants when scene-level overrides change.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let descendantsContaining = windows
             .reduce([], { result, window in result + window.descendants() })
@@ -107,6 +124,7 @@ extension UIWindowScene: _UIEnvironmentsContaining {
         _environments.notifyRegistrationsNeedUpdate(overrides)
     }
 
+    /// Scene overrides are treated as terminal for scene-origin resolution.
     var _inheritedEnvironmentOverrides: [ObjectIdentifier: Sendable] {
         environmentOverrides.storage
     }
