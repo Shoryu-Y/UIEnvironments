@@ -147,6 +147,30 @@ private func makeComplexHierarchy() -> ComplexHierarchy {
 }
 
 @MainActor
+@Test func unloadedChildViewControllerUsesDefaultAfterParentOverrideChange() {
+    let parent = UIViewController()
+    let child = UIViewController()
+
+    parent.loadViewIfNeeded()
+    child.loadViewIfNeeded()
+
+    parent.addChild(child)
+    parent.view.addSubview(child.view)
+    child.didMove(toParent: parent)
+
+    parent.environmentOverrides.testInt = 1
+    #expect(child.environments.testInt == 1)
+
+    // Unload child view while keeping VC containment.
+    child.view = nil
+    #expect(child.isViewLoaded == false)
+
+    parent.environmentOverrides.testInt = 2
+
+    #expect(child.environments.testInt == TestIntEnvironment.defaultValue)
+}
+
+@MainActor
 @Test func childViewChangeNotificationIsNotDuplicatedInViewControllerHierarchy() {
     let parent = UIViewController()
     let child = UIViewController()

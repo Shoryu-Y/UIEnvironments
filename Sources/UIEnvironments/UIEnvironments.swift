@@ -13,15 +13,7 @@ import UIKit
     /// provided, the definition's `defaultValue` is used.
     ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
-        let overriddenEnvironments: [ObjectIdentifier: Sendable]
-
-        if let cache {
-            overriddenEnvironments = cache
-        } else {
-            overriddenEnvironments = owner._inheritedEnvironmentOverrides
-            cache = overriddenEnvironments
-        }
-
+        let overriddenEnvironments = owner._inheritedEnvironmentOverrides
         return (overriddenEnvironments[ObjectIdentifier(type)] as? Key.Value) ?? Key.defaultValue
     }
 
@@ -36,18 +28,17 @@ import UIKit
     var overrides: UIEnvironmentOverrides?
     var registrations: [UIEnvironmentChangeRegistration] = []
 
-    private var cache: [ObjectIdentifier: Sendable]?
+    func clearCache() {
+        // Kept for compatibility with propagation flow.
+    }
 
-    func onChanged(_ overrides: UIEnvironmentOverrides) {
-        cache = nil
-
-        let registrationsNeedUpdate = registrations.filter { registration in
-            registration.identifiers.contains(where: { id in
-                overrides.storage.keys.contains(where: { $0 == id })
-            })
-        }
-        for registration in registrationsNeedUpdate {
-            registration.action()
-        }
+    func notifyRegistrationsNeedUpdate(_ overrides: UIEnvironmentOverrides) {
+        registrations
+            .filter { registration in
+                registration.identifiers.contains(where: { id in
+                    overrides.storage.keys.contains(where: { $0 == id })
+                })
+            }
+            .forEach { $0.action() }
     }
 }

@@ -12,6 +12,7 @@ extension _UIEnvironmentsContaining {
         get { _environments.overrides }
         set {
             guard let newValue else { return }
+
             _environments.overrides = newValue
             _propagate(newValue)
         }
