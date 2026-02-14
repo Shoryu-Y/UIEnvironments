@@ -14,6 +14,7 @@ extension _UIEnvironmentsContaining {
             guard let newValue else { return }
 
             _environments.overrides = newValue
+            UIEnvironments.bumpCacheGeneration()
             _propagate(newValue)
         }
     }

@@ -5,6 +5,13 @@ import UIKit
 /// `UIViewController`, `UIWindow`, or `UIWindowScene`.
 ///
 @MainActor public class UIEnvironments {
+    private enum CachedOverride {
+        case value(Sendable)
+        case missing
+    }
+
+    private static var cacheGeneration: UInt64 = 1
+
     /// Returns the current value associated with the given environment definition.
     ///
     /// Pass an environment definition type and read its value for the receiver,
@@ -14,7 +21,29 @@ import UIKit
     ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
         let identifier = ObjectIdentifier(type)
-        return (owner._inheritedEnvironmentOverrideValue(for: identifier) as? Key.Value) ?? Key.defaultValue
+
+        if localCacheGeneration != Self.cacheGeneration {
+            cache.removeAll(keepingCapacity: true)
+            localCacheGeneration = Self.cacheGeneration
+        }
+
+        if let cached = cache[identifier] {
+            switch cached {
+            case .value(let value):
+                return (value as? Key.Value) ?? Key.defaultValue
+            case .missing:
+                return Key.defaultValue
+            }
+        }
+
+        let resolvedValue = owner._inheritedEnvironmentOverrideValue(for: identifier)
+        if let resolvedValue {
+            cache[identifier] = .value(resolvedValue)
+            return (resolvedValue as? Key.Value) ?? Key.defaultValue
+        } else {
+            cache[identifier] = .missing
+            return Key.defaultValue
+        }
     }
 
     // MARK: - Internal
@@ -28,8 +57,12 @@ import UIKit
     var overrides: UIEnvironmentOverrides?
     var registrations: [UIEnvironmentChangeRegistration] = []
 
+    private var localCacheGeneration: UInt64 = 0
+    private var cache: [ObjectIdentifier: CachedOverride] = [:]
+
     func clearCache() {
-        // Kept for compatibility with propagation flow.
+        localCacheGeneration = 0
+        cache.removeAll(keepingCapacity: true)
     }
 
     func notifyRegistrationsNeedUpdate(_ overrides: UIEnvironmentOverrides) {
@@ -40,5 +73,12 @@ import UIKit
                 })
             }
             .forEach { $0.action() }
+    }
+
+    static func bumpCacheGeneration() {
+        cacheGeneration &+= 1
+        if cacheGeneration == 0 {
+            cacheGeneration = 1
+        }
     }
 }
