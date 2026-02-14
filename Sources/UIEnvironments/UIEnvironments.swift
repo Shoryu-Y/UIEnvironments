@@ -5,6 +5,23 @@ import UIKit
 /// `UIViewController`, `UIWindow`, or `UIWindowScene`.
 ///
 @MainActor public class UIEnvironments {
+    /// A cached entry for a resolved environment key.
+    ///
+    /// `.value` stores an override found in the responder chain,
+    /// while `.missing` memoizes the absence of an override.
+    ///
+    private enum CachedOverride {
+        case value(Sendable)
+        case missing
+    }
+
+    /// Global generation used to invalidate all per-instance caches.
+    ///
+    /// Any override update bumps this counter so subsequent reads
+    /// rebuild local caches lazily.
+    ///
+    private static var cacheGeneration: UInt64 = 1
+
     /// Returns the current value associated with the given environment definition.
     ///
     /// Pass an environment definition type and read its value for the receiver,
@@ -12,42 +29,85 @@ import UIKit
     /// view, view controller, or window scene hierarchy. If no value has been
     /// provided, the definition's `defaultValue` is used.
     ///
+    /// Resolution is memoized per key and per generation to reduce repeated
+    /// responder-chain traversal while still reflecting recent override changes.
+    ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
-        let overriddenEnvironments: [ObjectIdentifier: Sendable]
+        let identifier = ObjectIdentifier(type)
 
-        if let cache {
-            overriddenEnvironments = cache
-        } else {
-            overriddenEnvironments = owner._inheritedEnvironmentOverrides
-            cache = overriddenEnvironments
+        if localCacheGeneration != Self.cacheGeneration {
+            cache.removeAll(keepingCapacity: true)
+            localCacheGeneration = Self.cacheGeneration
         }
 
-        return (overriddenEnvironments[ObjectIdentifier(type)] as? Key.Value) ?? Key.defaultValue
+        if let cached = cache[identifier] {
+            switch cached {
+            case .value(let value):
+                return (value as? Key.Value) ?? Key.defaultValue
+            case .missing:
+                return Key.defaultValue
+            }
+        }
+
+        let resolvedValue = owner._inheritedEnvironmentOverrideValue(for: identifier)
+        if let resolvedValue {
+            cache[identifier] = .value(resolvedValue)
+            return (resolvedValue as? Key.Value) ?? Key.defaultValue
+        } else {
+            cache[identifier] = .missing
+            return Key.defaultValue
+        }
     }
 
     // MARK: - Internal
 
+    /// Owning responder-like object for this environment container.
     weak var owner: _UIEnvironmentsContaining!
 
+    /// Creates a container bound to the specified owner.
     init(_ owner: _UIEnvironmentsContaining) {
         self.owner = owner
     }
 
+    /// Overrides defined directly on the owner.
     var overrides: UIEnvironmentOverrides?
+    /// Registered callbacks for environment updates.
     var registrations: [UIEnvironmentChangeRegistration] = []
 
-    private var cache: [ObjectIdentifier: Sendable]?
+    /// Last seen global generation for the local cache.
+    private var localCacheGeneration: UInt64 = 0
+    /// Per-key cache for resolved values in the current generation.
+    private var cache: [ObjectIdentifier: CachedOverride] = [:]
 
-    func onChanged(_ overrides: UIEnvironmentOverrides) {
-        cache = nil
+    /// Clears the local per-key cache immediately.
+    ///
+    /// This is mainly used by propagation paths that want eager invalidation.
+    ///
+    func clearCache() {
+        localCacheGeneration = 0
+        cache.removeAll(keepingCapacity: true)
+    }
 
-        let registrationsNeedUpdate = registrations.filter { registration in
-            registration.identifiers.contains(where: { id in
-                overrides.storage.keys.contains(where: { $0 == id })
-            })
-        }
-        for registration in registrationsNeedUpdate {
-            registration.action()
+    /// Executes registrations that depend on keys included in `overrides`.
+    func notifyRegistrationsNeedUpdate(_ overrides: UIEnvironmentOverrides) {
+        registrations
+            .filter { registration in
+                registration.identifiers.contains(where: { id in
+                    overrides.storage.keys.contains(where: { $0 == id })
+                })
+            }
+            .forEach { $0.action() }
+    }
+
+    /// Increments the global cache generation.
+    ///
+    /// Wraparound is handled by skipping `0` so new instances can still use
+    /// `0` as an initial "not initialized" marker.
+    ///
+    static func bumpCacheGeneration() {
+        cacheGeneration &+= 1
+        if cacheGeneration == 0 {
+            cacheGeneration = 1
         }
     }
 }
