@@ -4,6 +4,20 @@ import UIKit
 /// Associated-object key used to attach `UIEnvironments` to UIKit responders.
 private nonisolated(unsafe) let _environmentsKey = malloc(1)!
 
+@MainActor
+private func notifyUniqueRegistrations(
+    _ containings: [any _UIEnvironmentsContaining],
+    overrides: UIEnvironmentOverrides
+) {
+    var visited: Set<ObjectIdentifier> = []
+
+    for containing in containings {
+        let identifier = ObjectIdentifier(containing)
+        guard visited.insert(identifier).inserted else { continue }
+        containing._environments.notifyRegistrationsNeedUpdate(overrides)
+    }
+}
+
 private extension UIResponder {
     /// Collects leaf views reachable from the receiver without forcing view loading.
     ///
@@ -12,6 +26,13 @@ private extension UIResponder {
     /// - For `UIWindow`, it traverses `rootViewController` if present.
     ///
     func leafViews() -> [UIView] {
+        if let window = self as? UIWindow, let rootViewController = window.rootViewController {
+            let rootLeaves = rootViewController.leafViews()
+            if !rootLeaves.isEmpty {
+                return rootLeaves
+            }
+        }
+
         var results: [UIView] = []
 
         if let view = self as? UIView {
@@ -54,6 +75,13 @@ private extension UIResponder {
     }
 }
 
+private extension UIViewController {
+    /// Collects this controller and all descendants in the containment tree.
+    func selfAndDescendantViewControllers() -> [UIViewController] {
+        [self] + children.flatMap { $0.selfAndDescendantViewControllers() }
+    }
+}
+
 extension UIView: _UIEnvironmentsContaining {
     /// Lazily creates and stores environments for this view.
     var _environments: UIEnvironments {
@@ -68,10 +96,14 @@ extension UIView: _UIEnvironmentsContaining {
 
     /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
-        let containings = descendants()
-            .compactMap({ $0 as? _UIEnvironmentsContaining })
+        var containings = descendants()
+            .compactMap({ $0 as? any _UIEnvironmentsContaining })
 
-        containings.forEach { $0._environments.notifyRegistrationsNeedUpdate(overrides) }
+        if let window = self as? UIWindow, let rootViewController = window.rootViewController {
+            containings.append(contentsOf: rootViewController.selfAndDescendantViewControllers())
+        }
+
+        notifyUniqueRegistrations(containings, overrides: overrides)
 
         _environments.notifyRegistrationsNeedUpdate(overrides)
     }
@@ -91,10 +123,13 @@ extension UIViewController: _UIEnvironmentsContaining {
 
     /// Notifies interested descendants that relevant environment overrides changed.
     func _propagate(_ overrides: UIEnvironmentOverrides) {
-        let containings = descendants()
-            .compactMap({ $0 as? _UIEnvironmentsContaining })
+        let descendantsContaining = descendants()
+            .compactMap({ $0 as? any _UIEnvironmentsContaining })
+        let childViewControllers = children
+            .flatMap { $0.selfAndDescendantViewControllers() }
+            .compactMap { $0 as any _UIEnvironmentsContaining }
 
-        containings.forEach { $0._environments.notifyRegistrationsNeedUpdate(overrides) }
+        notifyUniqueRegistrations(descendantsContaining + childViewControllers, overrides: overrides)
 
         _environments.notifyRegistrationsNeedUpdate(overrides)
     }
@@ -116,10 +151,15 @@ extension UIWindowScene: _UIEnvironmentsContaining {
     func _propagate(_ overrides: UIEnvironmentOverrides) {
         let descendantsContaining = windows
             .reduce([], { result, window in result + window.descendants() })
-            .compactMap { $0 as? _UIEnvironmentsContaining }
-        let containings = windows + descendantsContaining
+            .compactMap { $0 as? any _UIEnvironmentsContaining }
+        let rootViewControllers = windows
+            .compactMap(\.rootViewController)
+            .flatMap { $0.selfAndDescendantViewControllers() }
+            .compactMap { $0 as any _UIEnvironmentsContaining }
+        let windowsContaining = windows.map { $0 as any _UIEnvironmentsContaining }
+        let containings = windowsContaining + descendantsContaining + rootViewControllers
 
-        containings.forEach { $0._environments.notifyRegistrationsNeedUpdate(overrides) }
+        notifyUniqueRegistrations(containings, overrides: overrides)
 
         _environments.notifyRegistrationsNeedUpdate(overrides)
     }

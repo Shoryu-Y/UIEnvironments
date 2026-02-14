@@ -171,6 +171,24 @@ private func makeComplexHierarchy() -> ComplexHierarchy {
 }
 
 @MainActor
+@Test func windowOverrideNotifiesUnloadedRootViewControllerRegistration() {
+    let window = UIWindow()
+    let rootViewController = UIViewController()
+    window.rootViewController = rootViewController
+
+    #expect(rootViewController.isViewLoaded == false)
+
+    var changeCount = 0
+    rootViewController.registerForEnvironmentChanges([TestIntEnvironment.self]) {
+        changeCount += 1
+    }
+
+    window.environmentOverrides.testInt = 123
+
+    #expect(changeCount == 1)
+}
+
+@MainActor
 @Test func childViewChangeNotificationIsNotDuplicatedInViewControllerHierarchy() {
     let parent = UIViewController()
     let child = UIViewController()
