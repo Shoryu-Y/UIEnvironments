@@ -246,3 +246,22 @@ This repository includes a sample app, `UIEnvironmentExample`, which combines
 UIKit and SwiftUI.  
 It demonstrates how environment values are propagated and overridden across
 multiple view hierarchies—build and run it to see the behavior in action.
+
+## Run Tests In Both Modes
+
+To validate both paths on iOS 17+:
+
+- native trait bridge enabled
+- fallback path (`UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE=1`)
+
+run:
+
+```bash
+./scripts/test_both_modes.sh
+```
+
+You can also pass scheme names just like `scripts/test.sh`:
+
+```bash
+./scripts/test_both_modes.sh UIEnvironments
+```
