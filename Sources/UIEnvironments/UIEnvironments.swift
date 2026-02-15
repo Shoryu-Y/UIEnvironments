@@ -22,17 +22,16 @@ import UIKit
     ///
     private static var cacheGeneration: UInt64 = 1
 
-    /// Debug switch that forces fallback behavior even on iOS 17+.
+    /// Disables native trait bridging even on iOS 17+.
     ///
-    /// Set this to `true` to disable native trait bridging and verify
-    /// `UIEnvironments`-only behavior during debugging.
+    /// Set this to `true` to force the `UIEnvironments` fallback path.
     ///
-    public static var forceFallbackInDebugMode: Bool =
-        ProcessInfo.processInfo.environment["UIENVIRONMENTS_FORCE_FALLBACK"] == "1"
+    public static var disableNativeTraitBridge: Bool =
+        ProcessInfo.processInfo.environment["UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE"] == "1"
 
     static var isNativeTraitBridgeEnabled: Bool {
         if #available(iOS 17.0, *) {
-            return !forceFallbackInDebugMode
+            return !disableNativeTraitBridge
         }
 
         return false
