@@ -40,3 +40,38 @@ public protocol UIEnvironmentDefinition: Sendable {
     /// The value that is used when no explicit override has been provided.
     static var defaultValue: Value { get }
 }
+
+@available(iOS 17.0, *)
+extension UIEnvironmentDefinition where Self: UITraitDefinition {
+    /// Reads this definition's value from a trait collection as `Sendable`.
+    static func _traitBridgeRead(from traitCollection: UITraitCollection) -> Sendable {
+        traitCollection[Self.self]
+    }
+
+    /// Reads this definition's value from trait overrides as `Sendable`.
+    static func _traitBridgeRead(from traitOverrides: UITraitOverrides) -> Sendable {
+        traitOverrides[Self.self]
+    }
+
+    /// Returns `true` when an explicit value is set in trait overrides.
+    static func _traitBridgeContains(in traitOverrides: UITraitOverrides) -> Bool {
+        traitOverrides.contains(Self.self)
+    }
+
+    /// Writes a type-erased value into mutable trait overrides.
+    ///
+    /// Returns `true` when the cast to the definition's `Value` succeeds.
+    static func _traitBridgeWrite(_ value: Sendable, to traitOverrides: inout UITraitOverrides) -> Bool {
+        guard let value = value as? Value else {
+            return false
+        }
+
+        traitOverrides[Self.self] = value
+        return true
+    }
+
+    /// Removes this trait from mutable trait overrides.
+    static func _traitBridgeRemove(from traitOverrides: inout UITraitOverrides) {
+        traitOverrides.remove(Self.self)
+    }
+}

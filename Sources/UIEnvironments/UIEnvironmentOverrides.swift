@@ -7,6 +7,11 @@ import UIKit
 /// or `UIWindowScene` to affect all of their descendants.
 ///
 public struct UIEnvironmentOverrides: Sendable, UIMutableEnvironments {
+    struct Entry: Sendable {
+        var definition: any UIEnvironmentDefinition.Type
+        var value: Sendable
+    }
+
     /// Accesses the override for the given environment definition.
     ///
     /// When reading, this returns the explicitly stored value if present,
@@ -14,9 +19,28 @@ public struct UIEnvironmentOverrides: Sendable, UIMutableEnvironments {
     /// value is stored and will be visible to any descendant that reads the environment.
     ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
-        get { (storage[ObjectIdentifier(type)] as? Key.Value) ?? Key.defaultValue }
-        set { storage[ObjectIdentifier(type)] = newValue }
+        get { (entries[ObjectIdentifier(type)]?.value as? Key.Value) ?? Key.defaultValue }
+        set {
+            entries[ObjectIdentifier(type)] = Entry(
+                definition: type,
+                value: newValue
+            )
+        }
     }
 
-    var storage: [ObjectIdentifier: Sendable] = [:]
+    var entries: [ObjectIdentifier: Entry] = [:]
+
+    var storage: [ObjectIdentifier: Sendable] {
+        entries.reduce(into: [:]) { result, entry in
+            result[entry.key] = entry.value.value
+        }
+    }
+
+    var identifiers: Set<ObjectIdentifier> {
+        Set(entries.keys)
+    }
+
+    func value(for identifier: ObjectIdentifier) -> Sendable? {
+        entries[identifier]?.value
+    }
 }

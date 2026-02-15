@@ -1,6 +1,6 @@
 import Testing
-import UIKit
 @testable import UIEnvironments
+import UIKit
 
 private struct TestIntEnvironment: UIEnvironmentDefinition {
     static let defaultValue = 0
@@ -48,7 +48,7 @@ private extension UIMutableEnvironments {
 ///           -> grandChildViewController.view
 ///     -> siblingBranchView
 ///       -> siblingLeafView
-/// 
+///
 private struct ComplexHierarchy {
     let rootViewController: UIViewController
     let rootContainerView: UIView
@@ -313,11 +313,10 @@ private func makeComplexHierarchy() -> ComplexHierarchy {
     #expect(hierarchy.siblingLeafView.environments.testString == "root-b")
 }
 
-
 @MainActor
 @Test func cacheUpdatesAcrossComplexHierarchyAfterMultipleOverrideChanges2() {
     let hierarchy = makeComplexHierarchy()
-    var environmentChangeCount: Int = 0
+    var environmentChangeCount = 0
 
     hierarchy.childViewController.view.registerForEnvironmentChanges([TestStringEnvironment.self]) {
         environmentChangeCount += 1

@@ -68,7 +68,7 @@ final class ChildViewController1: UIViewController {
         super.viewDidLoad()
     }
 
-    override func viewIsAppearing(_ animated: Bool) {
+    override func viewIsAppearing(_: Bool) {
         view.backgroundColor = environments.theme.backgroundColor
     }
 }
@@ -78,7 +78,7 @@ final class ChildViewController2: UIViewController {
         super.viewDidLoad()
     }
 
-    override func viewIsAppearing(_ animated: Bool) {
+    override func viewIsAppearing(_: Bool) {
         view.backgroundColor = environments.theme.backgroundColor
     }
 }

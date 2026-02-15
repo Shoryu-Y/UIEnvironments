@@ -1,15 +1,27 @@
 import UIKit
 
 public struct UIEnvironmentChangeRegistration: Sendable {
-    var identifiers: [ObjectIdentifier]
+    var identifiers: Set<ObjectIdentifier>
     var action: @Sendable @MainActor () -> Void
 
     init(
         definitions: [any UIEnvironmentDefinition.Type],
         action: @Sendable @escaping @MainActor () -> Void
     ) {
-        identifiers = definitions.map { ObjectIdentifier($0) }
+        identifiers = Set(definitions.map { ObjectIdentifier($0) })
         self.action = action
+    }
+
+    init(
+        identifiers: Set<ObjectIdentifier>,
+        action: @Sendable @escaping @MainActor () -> Void
+    ) {
+        self.identifiers = identifiers
+        self.action = action
+    }
+
+    var id: UUID {
+        uuid
     }
 
     private var uuid = UUID()

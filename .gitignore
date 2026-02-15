@@ -62,5 +62,6 @@ fastlane/screenshots/**/*.png
 fastlane/test_output
 
 .DS_Store
-scripts/
+scripts/*
+!scripts/test_both_modes.sh
 skills/

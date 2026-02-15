@@ -1,7 +1,7 @@
 import UIKit
 
-@MainActor
 /// Internal abstraction for responders that participate in environment resolution.
+@MainActor
 protocol _UIEnvironmentsContaining: UIResponder {
     /// Backing environment container attached to the responder.
     var _environments: UIEnvironments { get }
@@ -11,6 +11,40 @@ protocol _UIEnvironmentsContaining: UIResponder {
 }
 
 extension _UIEnvironmentsContaining {
+    @available(iOS 17.0, *)
+    func _nativeTraitCollection() -> UITraitCollection? {
+        if let view = self as? UIView {
+            return view.traitCollection
+        }
+
+        if let viewController = self as? UIViewController {
+            return viewController.traitCollection
+        }
+
+        if let windowScene = self as? UIWindowScene {
+            return windowScene.traitCollection
+        }
+
+        return nil
+    }
+
+    @available(iOS 17.0, *)
+    func _nativeTraitOverrides() -> UITraitOverrides? {
+        if let view = self as? UIView {
+            return view.traitOverrides
+        }
+
+        if let viewController = self as? UIViewController {
+            return viewController.traitOverrides
+        }
+
+        if let windowScene = self as? UIWindowScene {
+            return windowScene.traitOverrides
+        }
+
+        return nil
+    }
+
     /// Internal storage accessor for overrides set on this responder.
     ///
     /// Setting a non-nil value bumps the global cache generation, then
@@ -21,7 +55,13 @@ extension _UIEnvironmentsContaining {
         set {
             guard let newValue else { return }
 
+            let previousValue = _environments.overrides ?? UIEnvironmentOverrides()
             _environments.overrides = newValue
+
+            if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
+                _syncNativeTraitOverrides(from: previousValue, to: newValue)
+            }
+
             UIEnvironments.bumpCacheGeneration()
             _propagate(newValue)
         }
@@ -54,14 +94,14 @@ extension _UIEnvironmentsContaining {
     /// a matching override is found or the chain ends.
     ///
     func _inheritedEnvironmentOverrideValue(for identifier: ObjectIdentifier) -> Sendable? {
-        if let value = _environmentOverrides?.storage[identifier] {
+        if let value = _environmentOverrides?.value(for: identifier) {
             return value
         }
 
         for responder in sequence(first: next, next: { $0?.next }) {
             guard
                 let containable = responder as? _UIEnvironmentsContaining,
-                let value = containable._environmentOverrides?.storage[identifier]
+                let value = containable._environmentOverrides?.value(for: identifier)
             else {
                 continue
             }
@@ -70,5 +110,57 @@ extension _UIEnvironmentsContaining {
         }
 
         return nil
+    }
+
+    @available(iOS 17.0, *)
+    private func _syncNativeTraitOverrides(
+        from oldOverrides: UIEnvironmentOverrides,
+        to newOverrides: UIEnvironmentOverrides
+    ) {
+        let removedIdentifiers = oldOverrides.identifiers.subtracting(newOverrides.identifiers)
+
+        _updateTraitOverrides { traitOverrides in
+            for identifier in removedIdentifiers {
+                guard
+                    let entry = oldOverrides.entries[identifier],
+                    let traitDefinition = entry.definition as? any(UIEnvironmentDefinition & UITraitDefinition).Type
+                else {
+                    continue
+                }
+
+                traitDefinition._traitBridgeRemove(from: &traitOverrides)
+            }
+
+            for entry in newOverrides.entries.values {
+                guard let traitDefinition = entry.definition as? any(UIEnvironmentDefinition & UITraitDefinition).Type else {
+                    continue
+                }
+
+                _ = traitDefinition._traitBridgeWrite(entry.value, to: &traitOverrides)
+            }
+        }
+    }
+
+    @available(iOS 17.0, *)
+    private func _updateTraitOverrides(_ update: (inout UITraitOverrides) -> Void) {
+        if let view = self as? UIView {
+            var overrides = view.traitOverrides
+            update(&overrides)
+            view.traitOverrides = overrides
+            return
+        }
+
+        if let viewController = self as? UIViewController {
+            var overrides = viewController.traitOverrides
+            update(&overrides)
+            viewController.traitOverrides = overrides
+            return
+        }
+
+        if let windowScene = self as? UIWindowScene {
+            var overrides = windowScene.traitOverrides
+            update(&overrides)
+            windowScene.traitOverrides = overrides
+        }
     }
 }
