@@ -4,8 +4,8 @@ Backport of iOS 17’s `UITraitDefinition` / `UITraitOverrides`–style APIs
 to **iOS 13+**, with a similar developer experience.
 
 `UIEnvironments` lets you define, override, and observe arbitrary “environment
-values” flowing through your UIKit hierarchy (UIView, UIViewController, UIWindow, and UIWindowScene
-scenes), just like traits.
+values” flowing through your UIKit hierarchy (UIView, UIViewController, UIWindow, and UIWindowScene),
+just like traits.
 
 ## Motivation
 
@@ -191,53 +191,56 @@ With this setup:
 - iOS 16 and earlier: fallback `UIEnvironments` behavior is used.
 - iOS 17 and later: `ThemeEnvironment` is handled by native traits automatically.
 
-```diff
-  final class ParentViewController: UIViewController {
-      let childViewController = ChildViewController()
+No call-site changes are required for staged migration.  
+You can keep using `UIEnvironments` APIs, and the library will automatically
+bridge matching keys to native traits on iOS 17+.
 
-      override func viewDidLoad() {
-          super.viewDidLoad()
+```swift
+final class ParentViewController: UIViewController {
+    let childViewController = ChildViewController()
 
--        environmentOverrides.theme = Theme(
-+        traitOverrides.theme = Theme(
-              titleFont: .systemFont(ofSize: 16),
-              backgroundColor: .systemBlue
-          )
+    override func viewDidLoad() {
+        super.viewDidLoad()
 
-          addChild(childViewController)
-          childViewController.didMove(toParent: self)
-          view.addSubview(childViewController.view)
+        environmentOverrides.theme = Theme(
+            titleFont: .systemFont(ofSize: 16),
+            backgroundColor: .systemBlue
+        )
 
-          // ...
-      }
-  }
-    
-  final class ChildViewController: UIViewController {
-      override func viewDidLoad() {
-          super.viewDidLoad()
+        addChild(childViewController)
+        childViewController.didMove(toParent: self)
+        view.addSubview(childViewController.view)
+    }
+}
 
--         registerForEnvironmentChanges([ThemeEnvironment.self]) { [weak self] in
--             guard let self else { return }
--         
--             view.backgroundColor = environments.theme.backgroundColor
--         }
-+         registerForTraitChanges(
-+             [ThemeEnvironment.self],
-+             action: #selector(handleTraitChange(view:previousTraitCollection:))
-+         )
+final class ChildViewController: UIViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
 
-          // ...
-      }
+        registerForEnvironmentChanges([ThemeEnvironment.self]) { [weak self] in
+            guard let self else { return }
+            view.backgroundColor = environments.theme.backgroundColor
+        }
+    }
 
-      override func viewIsAppearing(_ animated: Bool) {
-          super.viewIsAppearing(animated)
-          view.backgroundColor = environments.theme.backgroundColor
-      }
+    override func viewIsAppearing(_ animated: Bool) {
+        super.viewIsAppearing(animated)
+        view.backgroundColor = environments.theme.backgroundColor
+    }
+}
+```
 
-+     @objc func handleTraitChange(view: UIView, previousTraitCollection: UITraitCollection) {
-+         view.backgroundColor = environments.theme.backgroundColor
-+     }
-  }
+If you want to compare behavior against the fallback implementation on iOS 17+,
+disable native bridging with:
+
+```swift
+UIEnvironments.disableNativeTraitBridge = true
+```
+
+or launch with:
+
+```bash
+UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE=1
 ```
 
 ## Example project
