@@ -80,6 +80,10 @@ private enum ParityOperation {
     case reloadChildView
     case moveChildViewToBranch
     case moveChildViewToSiblingBranch
+    /// Reparents by adding to the new superview without an intervening
+    /// `removeFromSuperview`, so the view never transits `window == nil`.
+    case moveChildViewToBranchDirect
+    case moveChildViewToSiblingBranchDirect
     case detachChildViewController
     case reattachChildViewController
     case registerChildViewObserver
@@ -153,6 +157,12 @@ private final class ReferenceTraitRunner: ParityRunner {
         case .moveChildViewToSiblingBranch:
             hierarchy.childHost = .siblingBranch
             reattachChildViewIfLoaded()
+        case .moveChildViewToBranchDirect:
+            hierarchy.childHost = .branch
+            moveChildViewDirectlyIfLoaded()
+        case .moveChildViewToSiblingBranchDirect:
+            hierarchy.childHost = .siblingBranch
+            moveChildViewDirectlyIfLoaded()
         case .detachChildViewController:
             detachChildViewController()
         case .reattachChildViewController:
@@ -296,6 +306,14 @@ private final class ReferenceTraitRunner: ParityRunner {
         hierarchy.childHostView.addSubview(childView)
     }
 
+    /// Moves the child view to the new host without first removing it, so the
+    /// window stays constant (no `didMoveToWindow`); only `didMoveToSuperview`
+    /// fires. UIKit removes it from the old superview automatically.
+    private func moveChildViewDirectlyIfLoaded() {
+        guard let childView = hierarchy.childViewController.viewIfLoaded else { return }
+        hierarchy.childHostView.addSubview(childView)
+    }
+
     private func detachChildViewController() {
         guard hierarchy.childViewController.parent != nil else { return }
         hierarchy.childViewController.willMove(toParent: nil)
@@ -368,6 +386,12 @@ private final class UIEnvironmentsRunner: ParityRunner {
         case .moveChildViewToSiblingBranch:
             hierarchy.childHost = .siblingBranch
             reattachChildViewIfLoaded()
+        case .moveChildViewToBranchDirect:
+            hierarchy.childHost = .branch
+            moveChildViewDirectlyIfLoaded()
+        case .moveChildViewToSiblingBranchDirect:
+            hierarchy.childHost = .siblingBranch
+            moveChildViewDirectlyIfLoaded()
         case .detachChildViewController:
             detachChildViewController()
         case .reattachChildViewController:
@@ -474,6 +498,14 @@ private final class UIEnvironmentsRunner: ParityRunner {
     private func reattachChildViewIfLoaded() {
         guard let childView = hierarchy.childViewController.viewIfLoaded else { return }
         childView.removeFromSuperview()
+        hierarchy.childHostView.addSubview(childView)
+    }
+
+    /// Moves the child view to the new host without first removing it, so the
+    /// window stays constant (no `didMoveToWindow`); only `didMoveToSuperview`
+    /// fires. UIKit removes it from the old superview automatically.
+    private func moveChildViewDirectlyIfLoaded() {
+        guard let childView = hierarchy.childViewController.viewIfLoaded else { return }
         hierarchy.childHostView.addSubview(childView)
     }
 
@@ -748,6 +780,25 @@ private func assertParity(
             // 実 UIKit が値変化として通知するかどうかを差分で検証する。
             .moveChildViewToSiblingBranch,
             .moveChildViewToBranch,
+            .unregisterChildViewObserver,
+        ]
+    )
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func parity_observerNotifiedWhenDirectReparentChangesResolvedValue() {
+    assertParity(
+        "observerNotifiedWhenDirectReparentChangesResolvedValue",
+        operations: [
+            .setPrimary(.branchView, "branch"),
+            .setPrimary(.siblingBranchView, "sibling"),
+            .registerChildViewObserver,
+            // removeFromSuperview を挟まない直接移動。window は不変で
+            // didMoveToSuperview のみ発火する。実 UIKit がこの経路でも
+            // 値変化として通知するかを差分で検証する。
+            .moveChildViewToSiblingBranchDirect,
+            .moveChildViewToBranchDirect,
             .unregisterChildViewObserver,
         ]
     )

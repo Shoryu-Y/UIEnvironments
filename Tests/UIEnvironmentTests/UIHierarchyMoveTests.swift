@@ -6,6 +6,11 @@ private struct MoveTestEnvironment: UIEnvironmentDefinition {
     static let defaultValue = 0
 }
 
+@available(iOS 17.0, *)
+private struct MoveTestTrait: UITraitDefinition {
+    static let defaultValue = "default"
+}
+
 private extension UIEnvironments {
     var moveTestValue: Int {
         self[MoveTestEnvironment.self]
@@ -123,6 +128,100 @@ private extension UIMutableEnvironments {
     window.addSubview(viewController.view)
     #expect(changeCount == 1)
     #expect(viewController.environments.moveTestValue == 7)
+}
+
+// MARK: - Absolute firing-count probes
+//
+// The parity tests only assert that this library's notification count equals
+// real UIKit's. These probes pin the absolute number this library produces so
+// the mechanism claimed in commit messages ("fires via the window-change
+// path") is actually verified rather than assumed.
+
+@MainActor
+@Test func explicitReparentFiringCount() {
+    let window = UIWindow()
+    let branch = UIView()
+    let sibling = UIView()
+    branch.environmentOverrides.moveTestValue = 1
+    sibling.environmentOverrides.moveTestValue = 2
+    window.addSubview(branch)
+    window.addSubview(sibling)
+
+    let view = UIView()
+    branch.addSubview(view)
+
+    var changeCount = 0
+    view.registerForEnvironmentChanges([MoveTestEnvironment.self]) {
+        changeCount += 1
+    }
+
+    // Explicit removeFromSuperview + addSubview to the sibling branch.
+    view.removeFromSuperview()
+    sibling.addSubview(view)
+
+    #expect(view.environments.moveTestValue == 2)
+    #expect(changeCount >= 1)
+}
+
+@MainActor
+@Test func directReparentFiringCount() {
+    let window = UIWindow()
+    let branch = UIView()
+    let sibling = UIView()
+    branch.environmentOverrides.moveTestValue = 1
+    sibling.environmentOverrides.moveTestValue = 2
+    window.addSubview(branch)
+    window.addSubview(sibling)
+
+    let view = UIView()
+    branch.addSubview(view)
+
+    var changeCount = 0
+    view.registerForEnvironmentChanges([MoveTestEnvironment.self]) {
+        changeCount += 1
+    }
+
+    // Direct addSubview to the sibling branch without an explicit
+    // removeFromSuperview first. The window never changes, so only
+    // didMoveToSuperview fires. The resolved value re-resolves correctly, but
+    // registrations do NOT fire (documented limitation): registrations fire on
+    // window changes, and lacking value equality we cannot fire on every
+    // superview change without over-notifying elsewhere.
+    sibling.addSubview(view)
+
+    #expect(view.environments.moveTestValue == 2)
+    #expect(changeCount == 0)
+}
+
+/// Ground truth: does real UIKit's `registerForTraitChanges` fire for the same
+/// plain-view direct reparent? This determines whether the limitation above is
+/// an actual divergence from UIKit or matches it.
+@available(iOS 17.0, *)
+@MainActor
+@Test func directReparentRealUIKitFiringCount() {
+    let window = UIWindow()
+    let branch = UIView()
+    let sibling = UIView()
+    branch.traitOverrides[MoveTestTrait.self] = "1"
+    sibling.traitOverrides[MoveTestTrait.self] = "2"
+    window.addSubview(branch)
+    window.addSubview(sibling)
+
+    let view = UIView()
+    branch.addSubview(view)
+
+    var changeCount = 0
+    let registration = view.registerForTraitChanges([MoveTestTrait.self]) { (_: UIView, _: UITraitCollection) in
+        changeCount += 1
+    }
+    defer { view.unregisterForTraitChanges(registration) }
+
+    sibling.addSubview(view)
+    window.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+
+    #expect(view.traitCollection[MoveTestTrait.self] == "2")
+    #expect(changeCount >= 1)
 }
 
 @MainActor
