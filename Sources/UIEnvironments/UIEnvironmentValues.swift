@@ -2,11 +2,14 @@ import UIKit
 
 /// An immutable snapshot of environment values resolved for a responder.
 ///
-/// `UIEnvironmentValues` is the environment analog of `UITraitCollection`: it
-/// captures the effective value of one or more environment definitions at a
-/// single point in time. Unlike ``UIEnvironmentOverrides``, it is read-only and
-/// is handed to change callbacks so they can compare against the previous
-/// resolution.
+/// The live, resolvable collection is ``UIEnvironments`` — that type is the
+/// analog of `UITraitCollection`. `UIEnvironmentValues` is a point-in-time
+/// *snapshot* of the values ``UIEnvironments`` resolves, analogous to a captured
+/// `UITraitCollection` such as the `previousTraitCollection` handed to a
+/// trait-change handler. It captures the effective value of one or more
+/// environment definitions at a single moment. Unlike ``UIEnvironmentOverrides``,
+/// it is read-only and is handed to change callbacks so they can compare against
+/// the previous resolution.
 ///
 /// Environment values are not required to be `Equatable`, so this type does not
 /// conform to `Equatable`. Use ``isEqual(to:)`` for a runtime-checked value

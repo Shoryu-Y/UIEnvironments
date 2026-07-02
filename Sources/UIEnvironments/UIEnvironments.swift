@@ -4,6 +4,11 @@ import UIKit
 /// resolved for a specific responder, such as a `UIView`,
 /// `UIViewController`, `UIWindow`, or `UIWindowScene`.
 ///
+/// This is the environment analog of `UITraitCollection`: the live collection
+/// you read resolved values from. For an immutable point-in-time snapshot of
+/// those values — for example the previous values handed to a change callback —
+/// see ``UIEnvironmentValues``.
+///
 @MainActor public class UIEnvironments {
     /// A cached entry for a resolved environment key.
     ///
