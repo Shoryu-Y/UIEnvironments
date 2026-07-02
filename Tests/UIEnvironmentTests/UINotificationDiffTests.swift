@@ -139,9 +139,9 @@ private extension UIMutableEnvironments {
     #expect(changeCount == 2)
 }
 
-// resolvedValues() merges the responder chain with the nearest override winning.
+// environmentValues merges the responder chain with the nearest override winning.
 @MainActor
-@Test func resolvedValuesMergesResponderChainNearestWins() {
+@Test func environmentValuesMergeResponderChainNearestWins() {
     let parent = UIView()
     let child = UIView()
     parent.addSubview(child)
@@ -150,7 +150,7 @@ private extension UIMutableEnvironments {
     parent.environmentOverrides[DiffNonEquatableEnvironment.self] = DiffNonEquatableBox(9)
     child.environmentOverrides[DiffIntEnvironment.self] = 2
 
-    let resolved = child.environments.resolvedValues()
+    let resolved = child.environments.environmentValues
 
     // Nearest override wins for a key defined at both levels...
     #expect(resolved[DiffIntEnvironment.self] == 2)
@@ -170,7 +170,7 @@ private extension UIMutableEnvironments {
     let view = UIView()
 
     var observedPrevious: [Int] = []
-    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { (previousValues: UIEnvironmentValues) in
+    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { (_: UIView, previousValues: UIEnvironmentValues) in
         observedPrevious.append(previousValues[DiffIntEnvironment.self])
     }
 

@@ -26,11 +26,11 @@ public struct UIEnvironmentValues: Sendable {
 
     /// Creates a snapshot by merging several snapshots together.
     ///
-    /// This mirrors `UITraitCollection.traitCollectionWithTraitsFromCollections:`:
-    /// when more than one collection specifies the same definition, the value
-    /// from the later collection in `collections` wins.
+    /// This mirrors `UITraitCollection(traitsFrom:)`: when more than one
+    /// collection specifies the same definition, the value from the later
+    /// collection in `collections` wins.
     ///
-    public init(merging collections: [UIEnvironmentValues]) {
+    public init(valuesFrom collections: [UIEnvironmentValues]) {
         var merged: [ObjectIdentifier: UIEnvironmentOverrides.Entry] = [:]
         for collection in collections {
             merged.merge(collection.entries) { _, new in new }
@@ -49,20 +49,20 @@ public struct UIEnvironmentValues: Sendable {
 
     /// The definitions explicitly specified in this snapshot.
     ///
-    /// This is the environment analog of `UITraitCollection`'s set of specified
-    /// traits.
+    /// `UITraitCollection` exposes no public equivalent, so this stays internal
+    /// and is used only to support the value-diffing machinery.
     ///
-    public var specifiedDefinitions: [any UIEnvironmentDefinition.Type] {
+    var specifiedDefinitions: [any UIEnvironmentDefinition.Type] {
         entries.values.map(\.definition)
     }
 
     /// Returns whether another snapshot's specified values are all present here.
     ///
-    /// This mirrors `UITraitCollection.containsTraitsInCollection:`: every
-    /// definition specified by `other` must be specified here with an equal
-    /// value, compared using runtime equality.
+    /// This mirrors `UITraitCollection.containsTraits(in:)`: every definition
+    /// specified by `other` must be specified here with an equal value,
+    /// compared using runtime equality.
     ///
-    public func contains(_ other: UIEnvironmentValues) -> Bool {
+    public func containsValues(in other: UIEnvironmentValues) -> Bool {
         for (identifier, otherEntry) in other.entries {
             guard
                 let entry = entries[identifier],
@@ -100,14 +100,14 @@ public struct UIEnvironmentValues: Sendable {
 
     /// Returns the definitions whose effective value differs from another snapshot.
     ///
-    /// This mirrors `UITraitCollection.changedTraitsFromTraitCollection:`. The
-    /// comparison uses each definition's effective value — its specified value,
-    /// or its `defaultValue` when unspecified — so a definition dropped from one
-    /// snapshot counts as changed only when its default differs from the value
-    /// held by the other snapshot. Values whose type is not `Equatable` are
-    /// always reported as changed.
+    /// `UITraitCollection` exposes no public equivalent, so this stays internal.
+    /// The comparison uses each definition's effective value — its specified
+    /// value, or its `defaultValue` when unspecified — so a definition dropped
+    /// from one snapshot counts as changed only when its default differs from
+    /// the value held by the other snapshot. Values whose type is not
+    /// `Equatable` are always reported as changed.
     ///
-    public func changedDefinitions(from other: UIEnvironmentValues) -> [any UIEnvironmentDefinition.Type] {
+    func changedDefinitions(from other: UIEnvironmentValues) -> [any UIEnvironmentDefinition.Type] {
         var identifiers = Set(entries.keys)
         identifiers.formUnion(other.entries.keys)
 

@@ -120,9 +120,9 @@ private func makeValues(_ build: (inout UIEnvironmentOverrides) -> Void) -> UIEn
     let subset = makeValues { $0[ValuesIntEnvironment.self] = 1 }
     let mismatched = makeValues { $0[ValuesIntEnvironment.self] = 2 }
 
-    #expect(full.contains(subset))
-    #expect(!subset.contains(full))
-    #expect(!full.contains(mismatched))
+    #expect(full.containsValues(in: subset))
+    #expect(!subset.containsValues(in: full))
+    #expect(!full.containsValues(in: mismatched))
 }
 
 @MainActor
@@ -133,7 +133,7 @@ private func makeValues(_ build: (inout UIEnvironmentOverrides) -> Void) -> UIEn
     }
     let second = makeValues { $0[ValuesStringEnvironment.self] = "second" }
 
-    let merged = UIEnvironmentValues(merging: [first, second])
+    let merged = UIEnvironmentValues(valuesFrom: [first, second])
 
     #expect(merged[ValuesIntEnvironment.self] == 1)
     #expect(merged[ValuesStringEnvironment.self] == "second")
