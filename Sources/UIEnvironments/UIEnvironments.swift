@@ -47,6 +47,12 @@ import UIKit
     /// Resolution is memoized per key and per generation to reduce repeated
     /// responder-chain traversal while still reflecting recent override changes.
     ///
+    /// Unlike override writes, hierarchy moves do not bump the global
+    /// generation. Reads instead validate the owner's current window identity
+    /// so that a value resolved while detached (or in another window) is never
+    /// served after the owner moves. This mirrors how `UITraitCollection`
+    /// re-resolves traits when a view joins a hierarchy.
+    ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
         if #available(iOS 17.0, *),
            Self.isNativeTraitBridgeEnabled,
@@ -70,6 +76,12 @@ import UIKit
         if localCacheGeneration != Self.cacheGeneration {
             cache.removeAll(keepingCapacity: true)
             localCacheGeneration = Self.cacheGeneration
+        }
+
+        let currentAttachment = owner?._attachmentIdentifier ?? nil
+        if currentAttachment != lastKnownAttachment {
+            lastKnownAttachment = currentAttachment
+            cache.removeAll(keepingCapacity: true)
         }
 
         if let cached = cache[identifier] {
@@ -99,6 +111,9 @@ import UIKit
     /// Creates a container bound to the specified owner.
     init(_ owner: _UIEnvironmentsContaining) {
         self.owner = owner
+        lastKnownAttachment = owner._attachmentIdentifier
+
+        _ = Self.installHierarchyObservation
     }
 
     /// Overrides defined directly on the owner.
@@ -112,6 +127,9 @@ import UIKit
     private var localCacheGeneration: UInt64 = 0
     /// Per-key cache for resolved values in the current generation.
     private var cache: [ObjectIdentifier: CachedOverride] = [:]
+    /// Identity of the window the owner belonged to when the cache was
+    /// last (re)built, or `nil` while detached from any window.
+    private var lastKnownAttachment: ObjectIdentifier?
 
     /// Clears the local per-key cache immediately.
     ///
@@ -119,6 +137,38 @@ import UIKit
     ///
     func clearCache() {
         localCacheGeneration = 0
+        cache.removeAll(keepingCapacity: true)
+    }
+
+    /// Handles the owner joining or leaving a window.
+    ///
+    /// Mirrors `UITraitCollection`: values are re-resolved against the new
+    /// position, and change registrations fire because their observed values
+    /// may resolve differently now. Environment values are not required to be
+    /// `Equatable`, so registrations fire on every window change rather than
+    /// only on actual value changes.
+    ///
+    func handleWindowAttachmentChange() {
+        let currentAttachment = owner?._attachmentIdentifier ?? nil
+
+        guard currentAttachment != lastKnownAttachment else { return }
+
+        lastKnownAttachment = currentAttachment
+        cache.removeAll(keepingCapacity: true)
+
+        registrations.forEach { $0.action() }
+    }
+
+    /// Handles the owner being reparented.
+    ///
+    /// Moving within the same window changes the responder chain without a
+    /// window change, so the cache is cleared eagerly. Registrations are not
+    /// fired here: when the move also changes the window, the window-change
+    /// path fires them, and firing from both hooks would double-notify.
+    /// A same-window reparent therefore refreshes resolved values but does
+    /// not notify registrations (known limitation versus `UITraitCollection`).
+    ///
+    func handleSuperviewChange() {
         cache.removeAll(keepingCapacity: true)
     }
 

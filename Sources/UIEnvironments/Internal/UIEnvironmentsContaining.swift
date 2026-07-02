@@ -4,6 +4,17 @@ import UIKit
 /// Associated-object key used to attach `UIEnvironments` to UIKit responders.
 private nonisolated(unsafe) let _environmentsKey = malloc(1)!
 
+extension _UIEnvironmentsContaining {
+    /// Returns the attached environments container without creating one.
+    ///
+    /// Hierarchy observation uses this so that plain views that never touched
+    /// the environment system don't get containers allocated for them.
+    ///
+    var _environmentsIfExists: UIEnvironments? {
+        objc_getAssociatedObject(self, _environmentsKey) as? UIEnvironments
+    }
+}
+
 @MainActor
 private func notifyUniqueRegistrations(
     _ containings: [any _UIEnvironmentsContaining],

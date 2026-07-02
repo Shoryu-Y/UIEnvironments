@@ -11,6 +11,33 @@ protocol _UIEnvironmentsContaining: UIResponder {
 }
 
 extension _UIEnvironmentsContaining {
+    /// Identity of the window this responder currently belongs to.
+    ///
+    /// Used as an O(1) fingerprint of the responder's hierarchy position so
+    /// cached resolutions can be discarded when the responder joins, leaves,
+    /// or moves between windows. `nil` means detached. Window scenes and
+    /// windows are their own resolution roots, so they use their own identity.
+    ///
+    var _attachmentIdentifier: ObjectIdentifier? {
+        if let window = self as? UIWindow {
+            return ObjectIdentifier(window)
+        }
+
+        if let view = self as? UIView {
+            return view.window.map(ObjectIdentifier.init)
+        }
+
+        if let viewController = self as? UIViewController {
+            return viewController.viewIfLoaded?.window.map(ObjectIdentifier.init)
+        }
+
+        if let windowScene = self as? UIWindowScene {
+            return ObjectIdentifier(windowScene)
+        }
+
+        return nil
+    }
+
     @available(iOS 17.0, *)
     func _nativeTraitCollection() -> UITraitCollection? {
         if let view = self as? UIView {
