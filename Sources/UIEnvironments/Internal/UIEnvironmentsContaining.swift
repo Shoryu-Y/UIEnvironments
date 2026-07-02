@@ -4,17 +4,28 @@ import UIKit
 /// Associated-object key used to attach `UIEnvironments` to UIKit responders.
 private nonisolated(unsafe) let _environmentsKey = malloc(1)!
 
+extension _UIEnvironmentsContaining {
+    /// Returns the attached environments container without creating one.
+    ///
+    /// Hierarchy observation uses this so that plain views that never touched
+    /// the environment system don't get containers allocated for them.
+    ///
+    var _environmentsIfExists: UIEnvironments? {
+        objc_getAssociatedObject(self, _environmentsKey) as? UIEnvironments
+    }
+}
+
 @MainActor
-private func notifyUniqueRegistrations(
+private func reevaluateUniqueRegistrations(
     _ containings: [any _UIEnvironmentsContaining],
-    overrides: UIEnvironmentOverrides
+    changedKeys: Set<ObjectIdentifier>
 ) {
     var visited: Set<ObjectIdentifier> = []
 
     for containing in containings {
         let identifier = ObjectIdentifier(containing)
         guard visited.insert(identifier).inserted else { continue }
-        containing._environments.notifyRegistrationsNeedUpdate(overrides)
+        containing._environments.reevaluateRegistrations(changedKeys: changedKeys)
     }
 }
 
@@ -95,7 +106,7 @@ extension UIView: _UIEnvironmentsContaining {
     }
 
     /// Notifies interested descendants that relevant environment overrides changed.
-    func _propagate(_ overrides: UIEnvironmentOverrides) {
+    func _propagate(changedKeys: Set<ObjectIdentifier>) {
         var containings = descendants()
             .compactMap { $0 as? any _UIEnvironmentsContaining }
 
@@ -103,9 +114,9 @@ extension UIView: _UIEnvironmentsContaining {
             containings.append(contentsOf: rootViewController.selfAndDescendantViewControllers())
         }
 
-        notifyUniqueRegistrations(containings, overrides: overrides)
+        reevaluateUniqueRegistrations(containings, changedKeys: changedKeys)
 
-        _environments.notifyRegistrationsNeedUpdate(overrides)
+        _environments.reevaluateRegistrations(changedKeys: changedKeys)
     }
 }
 
@@ -122,16 +133,16 @@ extension UIViewController: _UIEnvironmentsContaining {
     }
 
     /// Notifies interested descendants that relevant environment overrides changed.
-    func _propagate(_ overrides: UIEnvironmentOverrides) {
+    func _propagate(changedKeys: Set<ObjectIdentifier>) {
         let descendantsContaining = descendants()
             .compactMap { $0 as? any _UIEnvironmentsContaining }
         let childViewControllers = children
             .flatMap { $0.selfAndDescendantViewControllers() }
             .compactMap { $0 as any _UIEnvironmentsContaining }
 
-        notifyUniqueRegistrations(descendantsContaining + childViewControllers, overrides: overrides)
+        reevaluateUniqueRegistrations(descendantsContaining + childViewControllers, changedKeys: changedKeys)
 
-        _environments.notifyRegistrationsNeedUpdate(overrides)
+        _environments.reevaluateRegistrations(changedKeys: changedKeys)
     }
 }
 
@@ -148,7 +159,7 @@ extension UIWindowScene: _UIEnvironmentsContaining {
     }
 
     /// Notifies windows and descendants when scene-level overrides change.
-    func _propagate(_ overrides: UIEnvironmentOverrides) {
+    func _propagate(changedKeys: Set<ObjectIdentifier>) {
         let descendantsContaining = windows
             .reduce([]) { result, window in result + window.descendants() }
             .compactMap { $0 as? any _UIEnvironmentsContaining }
@@ -159,13 +170,18 @@ extension UIWindowScene: _UIEnvironmentsContaining {
         let windowsContaining = windows.map { $0 as any _UIEnvironmentsContaining }
         let containings = windowsContaining + descendantsContaining + rootViewControllers
 
-        notifyUniqueRegistrations(containings, overrides: overrides)
+        reevaluateUniqueRegistrations(containings, changedKeys: changedKeys)
 
-        _environments.notifyRegistrationsNeedUpdate(overrides)
+        _environments.reevaluateRegistrations(changedKeys: changedKeys)
     }
 
     /// Scene overrides are treated as terminal for scene-origin resolution.
     var _inheritedEnvironmentOverrides: [ObjectIdentifier: Sendable] {
         environmentOverrides.storage
+    }
+
+    /// Scene overrides are treated as terminal for scene-origin resolution.
+    var _inheritedEnvironmentEntries: [ObjectIdentifier: UIEnvironmentOverrides.Entry] {
+        _environmentOverrides?.entries ?? [:]
     }
 }

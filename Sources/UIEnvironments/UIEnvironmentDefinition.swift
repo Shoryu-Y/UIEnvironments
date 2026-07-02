@@ -41,6 +41,18 @@ public protocol UIEnvironmentDefinition: Sendable {
     static var defaultValue: Value { get }
 }
 
+extension UIEnvironmentDefinition {
+    /// The definition's default value type-erased to `Sendable`.
+    ///
+    /// This lets code holding an `any UIEnvironmentDefinition.Type` recover the
+    /// default without knowing the concrete `Value`, which is needed when
+    /// comparing effective values across snapshots.
+    ///
+    static var _defaultValueAsSendable: Sendable {
+        defaultValue
+    }
+}
+
 @available(iOS 17.0, *)
 extension UIEnvironmentDefinition where Self: UITraitDefinition {
     /// Reads this definition's value from a trait collection as `Sendable`.

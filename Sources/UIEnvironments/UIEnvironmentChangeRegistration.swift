@@ -1,22 +1,25 @@
 import UIKit
 
 public struct UIEnvironmentChangeRegistration: Sendable {
+    /// Definitions this registration observes, retaining their type so a value
+    /// snapshot can be resolved for them.
+    var definitions: [any UIEnvironmentDefinition.Type]
+    /// Identities of the observed definitions, used to intersect changed keys.
     var identifiers: Set<ObjectIdentifier>
-    var action: @Sendable @MainActor () -> Void
+    /// Callback invoked when an observed value changes.
+    ///
+    /// The previous environment values are passed so callers can compare
+    /// against the current environment. Values are exact for the observed
+    /// definitions; every other key is frozen at its callback-time value.
+    ///
+    var action: @Sendable @MainActor (_ previousEnvironments: UIEnvironments) -> Void
 
     init(
         definitions: [any UIEnvironmentDefinition.Type],
-        action: @Sendable @escaping @MainActor () -> Void
+        action: @Sendable @escaping @MainActor (_ previousEnvironments: UIEnvironments) -> Void
     ) {
+        self.definitions = definitions
         identifiers = Set(definitions.map { ObjectIdentifier($0) })
-        self.action = action
-    }
-
-    init(
-        identifiers: Set<ObjectIdentifier>,
-        action: @Sendable @escaping @MainActor () -> Void
-    ) {
-        self.identifiers = identifiers
         self.action = action
     }
 

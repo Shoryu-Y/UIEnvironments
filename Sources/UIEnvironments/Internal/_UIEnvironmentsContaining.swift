@@ -7,10 +7,42 @@ protocol _UIEnvironmentsContaining: UIResponder {
     var _environments: UIEnvironments { get }
 
     /// Propagates override changes to descendants and registrations.
-    func _propagate(_ overrides: UIEnvironmentOverrides)
+    ///
+    /// `changedKeys` is the set of definition identities whose resolved value
+    /// might have changed for a descendant, so that only registrations
+    /// observing those keys are re-evaluated.
+    ///
+    func _propagate(changedKeys: Set<ObjectIdentifier>)
 }
 
 extension _UIEnvironmentsContaining {
+    /// Identity of the window this responder currently belongs to.
+    ///
+    /// Used as an O(1) fingerprint of the responder's hierarchy position so
+    /// cached resolutions can be discarded when the responder joins, leaves,
+    /// or moves between windows. `nil` means detached. Window scenes and
+    /// windows are their own resolution roots, so they use their own identity.
+    ///
+    var _attachmentIdentifier: ObjectIdentifier? {
+        if let window = self as? UIWindow {
+            return ObjectIdentifier(window)
+        }
+
+        if let view = self as? UIView {
+            return view.window.map(ObjectIdentifier.init)
+        }
+
+        if let viewController = self as? UIViewController {
+            return viewController.viewIfLoaded?.window.map(ObjectIdentifier.init)
+        }
+
+        if let windowScene = self as? UIWindowScene {
+            return ObjectIdentifier(windowScene)
+        }
+
+        return nil
+    }
+
     @available(iOS 17.0, *)
     func _nativeTraitCollection() -> UITraitCollection? {
         if let view = self as? UIView {
@@ -63,7 +95,11 @@ extension _UIEnvironmentsContaining {
             }
 
             UIEnvironments.bumpCacheGeneration()
-            _propagate(newValue)
+
+            // A write can change resolution for keys it adds, keeps, or drops,
+            // so re-evaluate the union of the previous and new keys.
+            let changedKeys = previousValue.identifiers.union(newValue.identifiers)
+            _propagate(changedKeys: changedKeys)
         }
     }
 
@@ -83,6 +119,26 @@ extension _UIEnvironmentsContaining {
             .reduce(overrides) { result, overrides in
                 result.merging(
                     overrides.storage,
+                    uniquingKeysWith: { current, _ in current }
+                )
+            }
+    }
+
+    /// Resolves all inherited overrides into a merged entry map.
+    ///
+    /// Unlike ``_inheritedEnvironmentOverrides``, entries retain their
+    /// definition type so a snapshot can compute default values for keys other
+    /// snapshots specify. The nearest responder override wins for duplicate
+    /// keys.
+    ///
+    var _inheritedEnvironmentEntries: [ObjectIdentifier: UIEnvironmentOverrides.Entry] {
+        let ownEntries = _environmentOverrides?.entries ?? [:]
+
+        return sequence(first: next, next: { $0?.next })
+            .compactMap { $0 as? _UIEnvironmentsContaining }
+            .reduce(ownEntries) { result, containing in
+                result.merging(
+                    containing._environmentOverrides?.entries ?? [:],
                     uniquingKeysWith: { current, _ in current }
                 )
             }

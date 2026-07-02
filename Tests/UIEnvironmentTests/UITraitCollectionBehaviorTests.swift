@@ -126,7 +126,10 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
     if UIEnvironments.isNativeTraitBridgeEnabled {
         #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == "from-environment")
     } else {
-        #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+        // In the fallback path the environment write is not mirrored into the
+        // native trait overrides. Reading `traitOverrides` for an unset trait
+        // traps, so assert the absence via `contains` instead of reading it.
+        #expect(view.traitOverrides.contains(TestBridgedStringEnvironment.self) == false)
     }
 
     #expect(view.environments[TestBridgedStringEnvironment.self] == "from-environment")
@@ -152,6 +155,39 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
     }
 }
 
+@MainActor
+@Test func environmentOverridesContainsReflectsExplicitSpecification() {
+    var overrides = UIEnvironmentOverrides()
+    #expect(overrides.contains(TestFallbackEnvironment.self) == false)
+
+    overrides[TestFallbackEnvironment.self] = 42
+    #expect(overrides.contains(TestFallbackEnvironment.self))
+
+    // Assigning the default value still counts as an explicit override.
+    overrides[TestFallbackEnvironment.self] = TestFallbackEnvironment.defaultValue
+    #expect(overrides.contains(TestFallbackEnvironment.self))
+
+    overrides.remove(TestFallbackEnvironment.self)
+    #expect(overrides.contains(TestFallbackEnvironment.self) == false)
+    // After removal the definition resolves to its default again.
+    #expect(overrides[TestFallbackEnvironment.self] == TestFallbackEnvironment.defaultValue)
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func environmentOverrideRemoveClearsResolutionAndNativeTrait() {
+    let view = UIView()
+    view.environmentOverrides[TestBridgedStringEnvironment.self] = "set"
+    #expect(view.environments[TestBridgedStringEnvironment.self] == "set")
+
+    view.environmentOverrides.remove(TestBridgedStringEnvironment.self)
+
+    #expect(view.environmentOverrides.contains(TestBridgedStringEnvironment.self) == false)
+    #expect(view.environments[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+    // The removal is mirrored out of the native trait overrides as well.
+    #expect(view.traitOverrides.contains(TestBridgedStringEnvironment.self) == false)
+}
+
 @available(iOS 17.0, *)
 @MainActor
 @Test func registerForEnvironmentChangesCanRegisterAndUnregisterBridgedDefinitions() {
@@ -159,6 +195,39 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
 
     let registration = view.registerForEnvironmentChanges([TestBridgedStringEnvironment.self]) {}
     view.unregisterFromEnvironmentChanges(registration)
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func registerForEnvironmentChangesReportsPreviousValueForBridgedDefinition() {
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 640))
+    let view = UIView()
+    window.addSubview(view)
+    window.makeKeyAndVisible()
+    window.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+    var observedPrevious: [String] = []
+    view.registerForEnvironmentChanges([TestBridgedStringEnvironment.self]) { _, previousEnvironments in
+        observedPrevious.append(previousEnvironments[TestBridgedStringEnvironment.self])
+    }
+
+    if UIEnvironments.isNativeTraitBridgeEnabled {
+        view.traitOverrides[TestBridgedStringEnvironment.self] = "first"
+        window.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+        view.traitOverrides[TestBridgedStringEnvironment.self] = "second"
+        window.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+        #expect(observedPrevious == [TestBridgedStringEnvironment.defaultValue, "first"])
+    } else {
+        view.environmentOverrides[TestBridgedStringEnvironment.self] = "first"
+        view.environmentOverrides[TestBridgedStringEnvironment.self] = "second"
+
+        #expect(observedPrevious == [TestBridgedStringEnvironment.defaultValue, "first"])
+    }
 }
 
 @available(iOS 17.0, *)

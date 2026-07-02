@@ -1,16 +1,20 @@
 import UIEnvironments
 import UIKit
 
-struct Theme {
+// Environment values should be `Equatable` so change notifications fire only on
+// a genuine value change, matching Apple's guidance for custom trait values.
+struct Theme: Equatable {
+    var name: String
     var backgroundColor: UIColor
 
-    private init(backgroundColor: UIColor) {
+    private init(name: String, backgroundColor: UIColor) {
+        self.name = name
         self.backgroundColor = backgroundColor
     }
 
-    static var blue: Theme { .init(backgroundColor: .systemBlue) }
-    static var mint: Theme { .init(backgroundColor: .systemMint) }
-    static var orange: Theme { .init(backgroundColor: .systemOrange) }
+    static var blue: Theme { .init(name: "blue", backgroundColor: .systemBlue) }
+    static var mint: Theme { .init(name: "mint", backgroundColor: .systemMint) }
+    static var orange: Theme { .init(name: "orange", backgroundColor: .systemOrange) }
 }
 
 struct ThemeEnvironment: UIEnvironmentDefinition {

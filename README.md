@@ -102,6 +102,15 @@ final class ParentViewController: UIViewController {
 }
 ```
 
+To check whether an override is set on a responder, or to remove one so the
+value falls back to an inherited value or its default, use `contains(_:)` and
+`remove(_:)`:
+
+```swift
+environmentOverrides.contains(ThemeEnvironment.self) // true
+environmentOverrides.remove(ThemeEnvironment.self)
+```
+
 ### 3. Read & observe in a child
 
 In a child `UIViewController`, you can read the current value via
@@ -129,6 +138,18 @@ final class ChildViewController: UIViewController {
         // Just like UITraitCollection, it is appropriate to apply UIEnvironments in `viewIsAppearing`.
         view.backgroundColor = environments.theme.backgroundColor
     }
+}
+```
+
+If you need the previous values to compare against, use the two-argument form,
+mirroring `registerForTraitChanges`: the first argument is the environment
+whose values changed, and the second is the previous values.
+
+```swift
+registerForEnvironmentChanges([ThemeEnvironment.self]) { environment, previousEnvironments in
+    let previousTheme = previousEnvironments.theme
+    let currentTheme = environment.environments.theme
+    print("Background changed: \(previousTheme.backgroundColor) -> \(currentTheme.backgroundColor)")
 }
 ```
 

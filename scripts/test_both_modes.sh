@@ -53,9 +53,14 @@ run_mode \
     env -u UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE \
     "$TEST_SCRIPT" "${SCHEMES[@]}"
 
+# xcodebuild は起動シェルの環境変数を simulator 上のテストプロセスへ渡さない。
+# TEST_RUNNER_ プレフィックスを付けた変数のみ、プレフィックスを剥がして
+# テストランナープロセスへ転送される。これを付けないと fallback モードは
+# simulator 内に届かず、実際には bridge モードで実行されてしまう。
 run_mode \
     "Fallback (UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE=1)" \
     env UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE=1 \
+    TEST_RUNNER_UIENVIRONMENTS_DISABLE_NATIVE_TRAIT_BRIDGE=1 \
     "$TEST_SCRIPT" "${SCHEMES[@]}"
 
 if [ ${#FAILED_MODES[@]} -gt 0 ]; then

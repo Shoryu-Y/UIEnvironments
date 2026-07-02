@@ -28,6 +28,26 @@ public struct UIEnvironmentOverrides: Sendable, UIMutableEnvironments {
         }
     }
 
+    /// Returns whether an explicit override is set for the given definition.
+    ///
+    /// This reports only overrides stored directly in this collection; a value
+    /// inherited from an ancestor is not reported.
+    ///
+    public func contains<Key: UIEnvironmentDefinition>(_ type: Key.Type) -> Bool {
+        entries[ObjectIdentifier(type)] != nil
+    }
+
+    /// Removes the explicit override for the given definition, if present.
+    ///
+    /// After removal the definition resolves to an inherited value, or to its
+    /// `defaultValue` when no ancestor specifies one. This differs from
+    /// assigning `defaultValue`, which keeps the definition explicitly
+    /// specified.
+    ///
+    public mutating func remove<Key: UIEnvironmentDefinition>(_ type: Key.Type) {
+        entries.removeValue(forKey: ObjectIdentifier(type))
+    }
+
     var entries: [ObjectIdentifier: Entry] = [:]
 
     var storage: [ObjectIdentifier: Sendable] {

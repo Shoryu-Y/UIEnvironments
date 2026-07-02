@@ -10,6 +10,11 @@ private struct TestStringEnvironment: UIEnvironmentDefinition {
     static let defaultValue = "default"
 }
 
+@available(iOS 17.0, *)
+private struct TestUnloadedRootTrait: UITraitDefinition {
+    static let defaultValue = "default"
+}
+
 private extension UIEnvironments {
     var testInt: Int {
         self[TestIntEnvironment.self]
@@ -171,7 +176,7 @@ private func makeComplexHierarchy() -> ComplexHierarchy {
 }
 
 @MainActor
-@Test func windowOverrideNotifiesUnloadedRootViewControllerRegistration() {
+@Test func windowOverrideDoesNotNotifyUnloadedRootViewControllerRegistration() {
     let window = UIWindow()
     let rootViewController = UIViewController()
     window.rootViewController = rootViewController
@@ -185,7 +190,40 @@ private func makeComplexHierarchy() -> ComplexHierarchy {
 
     window.environmentOverrides.testInt = 123
 
-    #expect(changeCount == 1)
+    // An unloaded view controller resolves the default value (its responder
+    // chain is not connected until its view loads), so a diff-driven
+    // registration observes no change and does not fire. This matches real
+    // UIKit, whose trait-change callbacks do not fire for an unloaded view
+    // controller either (see
+    // windowTraitOverrideDoesNotNotifyUnloadedRootViewControllerInRealUIKit).
+    #expect(changeCount == 0)
+}
+
+/// Ground truth: real UIKit does not deliver a trait-change callback to an
+/// unloaded root view controller when a window-level trait override changes,
+/// even though its resolved trait value does change once queried.
+@available(iOS 17.0, *)
+@MainActor
+@Test func windowTraitOverrideDoesNotNotifyUnloadedRootViewControllerInRealUIKit() {
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 640))
+    let rootViewController = UIViewController()
+    window.rootViewController = rootViewController
+
+    #expect(rootViewController.isViewLoaded == false)
+
+    var changeCount = 0
+    let registration = rootViewController.registerForTraitChanges(
+        [TestUnloadedRootTrait.self]
+    ) { (_: UIViewController, _: UITraitCollection) in
+        changeCount += 1
+    }
+    defer { rootViewController.unregisterForTraitChanges(registration) }
+
+    window.traitOverrides[TestUnloadedRootTrait.self] = "win"
+    RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+    #expect(rootViewController.isViewLoaded == false)
+    #expect(changeCount == 0)
 }
 
 @MainActor
