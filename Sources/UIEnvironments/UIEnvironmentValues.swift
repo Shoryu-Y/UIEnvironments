@@ -1,21 +1,13 @@
 import UIKit
 
-/// An immutable snapshot of environment values resolved for a responder.
-///
-/// The live, resolvable collection is ``UIEnvironments`` — that type is the
-/// analog of `UITraitCollection`. `UIEnvironmentValues` is a point-in-time
-/// *snapshot* of the values ``UIEnvironments`` resolves, analogous to a captured
-/// `UITraitCollection` such as the `previousTraitCollection` handed to a
-/// trait-change handler. It captures the effective value of one or more
-/// environment definitions at a single moment. Unlike ``UIEnvironmentOverrides``,
-/// it is read-only and is handed to change callbacks so they can compare against
-/// the previous resolution.
+/// An immutable point-in-time snapshot of the environment values resolved for a
+/// responder, used to diff a registration's observed values across changes.
 ///
 /// Environment values are not required to be `Equatable`, so this type does not
 /// conform to `Equatable`. Use ``isEqual(to:)`` for a runtime-checked value
-/// comparison that mirrors how `UITraitCollection` compares boxed trait values.
+/// comparison.
 ///
-public struct UIEnvironmentValues: Sendable {
+struct UIEnvironmentValues: Sendable {
     /// Specified entries keyed by their definition's identity.
     ///
     /// An entry retains its definition type so a default value can be computed
@@ -33,7 +25,7 @@ public struct UIEnvironmentValues: Sendable {
     /// collection specifies the same definition, the value from the later
     /// collection in `collections` wins.
     ///
-    public init(valuesFrom collections: [UIEnvironmentValues]) {
+    init(valuesFrom collections: [UIEnvironmentValues]) {
         var merged: [ObjectIdentifier: UIEnvironmentOverrides.Entry] = [:]
         for collection in collections {
             merged.merge(collection.entries) { _, new in new }
@@ -46,15 +38,11 @@ public struct UIEnvironmentValues: Sendable {
     /// When the definition is specified in the snapshot its stored value is
     /// returned; otherwise the definition's `defaultValue` is used.
     ///
-    public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
+    subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
         (entries[ObjectIdentifier(type)]?.value as? Key.Value) ?? Key.defaultValue
     }
 
     /// The definitions explicitly specified in this snapshot.
-    ///
-    /// `UITraitCollection` exposes no public equivalent, so this stays internal
-    /// and is used only to support the value-diffing machinery.
-    ///
     var specifiedDefinitions: [any UIEnvironmentDefinition.Type] {
         entries.values.map(\.definition)
     }
@@ -65,7 +53,7 @@ public struct UIEnvironmentValues: Sendable {
     /// specified by `other` must be specified here with an equal value,
     /// compared using runtime equality.
     ///
-    public func containsValues(in other: UIEnvironmentValues) -> Bool {
+    func containsValues(in other: UIEnvironmentValues) -> Bool {
         for (identifier, otherEntry) in other.entries {
             guard
                 let entry = entries[identifier],
@@ -86,7 +74,7 @@ public struct UIEnvironmentValues: Sendable {
     /// unequal, matching how `UITraitCollection` falls back to identity for
     /// class-based trait values.
     ///
-    public func isEqual(to other: UIEnvironmentValues) -> Bool {
+    func isEqual(to other: UIEnvironmentValues) -> Bool {
         guard Set(entries.keys) == Set(other.entries.keys) else { return false }
 
         for (identifier, entry) in entries {
@@ -103,7 +91,6 @@ public struct UIEnvironmentValues: Sendable {
 
     /// Returns the definitions whose effective value differs from another snapshot.
     ///
-    /// `UITraitCollection` exposes no public equivalent, so this stays internal.
     /// The comparison uses each definition's effective value — its specified
     /// value, or its `defaultValue` when unspecified — so a definition dropped
     /// from one snapshot counts as changed only when its default differs from
@@ -129,30 +116,6 @@ public struct UIEnvironmentValues: Sendable {
         }
 
         return changed
-    }
-}
-
-@available(iOS 17.0, *)
-extension UIEnvironmentValues {
-    /// Builds a snapshot of bridged definitions read from a trait collection.
-    ///
-    /// Used to translate the `previousTraitCollection` reported by native trait
-    /// change observation into the environment's snapshot type, limited to the
-    /// bridged definitions the caller observes.
-    ///
-    init(
-        bridging traitCollection: UITraitCollection,
-        definitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type]
-    ) {
-        var entries: [ObjectIdentifier: UIEnvironmentOverrides.Entry] = [:]
-        for definition in definitions {
-            entries[ObjectIdentifier(definition)] = UIEnvironmentOverrides.Entry(
-                definition: definition,
-                value: definition._traitBridgeRead(from: traitCollection)
-            )
-        }
-
-        self.init(entries: entries)
     }
 }
 

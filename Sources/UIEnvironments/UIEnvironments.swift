@@ -156,13 +156,12 @@ import UIKit
 
     /// A read-only snapshot of the values resolved for the owner.
     ///
-    /// This is the environment analog of reading `traitCollection`, exposed as a
-    /// property to match it: it walks the responder chain and merges every
-    /// specified override, with the nearest responder winning. It reflects the
-    /// same fallback resolution used by the subscript, so it does not consult
-    /// natively bridged trait values.
+    /// It walks the responder chain and merges every specified override, with
+    /// the nearest responder winning, reflecting the same fallback resolution
+    /// used by the subscript (so it does not consult natively bridged trait
+    /// values).
     ///
-    public var environmentValues: UIEnvironmentValues {
+    var environmentValues: UIEnvironmentValues {
         UIEnvironmentValues(entries: owner?._inheritedEnvironmentEntries ?? [:])
     }
 

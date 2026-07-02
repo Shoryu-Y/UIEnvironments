@@ -164,19 +164,20 @@ private extension UIMutableEnvironments {
     )
 }
 
-// The previous-values overload receives the values resolved before the change.
+// The environment overload hands back the responder so the callback can read
+// the newly resolved values on each change.
 @MainActor
-@Test func previousValuesOverloadReceivesPriorValues() {
+@Test func environmentOverloadReadsCurrentValuesOnChange() {
     let view = UIView()
 
-    var observedPrevious: [Int] = []
-    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { (_: UIView, previousValues: UIEnvironmentValues) in
-        observedPrevious.append(previousValues[DiffIntEnvironment.self])
+    var observedCurrent: [Int] = []
+    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { (environment: UIView) in
+        observedCurrent.append(environment.environments.diffInt)
     }
 
     view.environmentOverrides.diffInt = 1
     view.environmentOverrides.diffInt = 2
 
-    #expect(observedPrevious == [DiffIntEnvironment.defaultValue, 1])
+    #expect(observedCurrent == [1, 2])
     #expect(view.environments.diffInt == 2)
 }
