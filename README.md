@@ -102,6 +102,15 @@ final class ParentViewController: UIViewController {
 }
 ```
 
+To check whether an override is set on a responder, or to remove one so the
+value falls back to an inherited value or its default, use `contains(_:)` and
+`remove(_:)`:
+
+```swift
+environmentOverrides.contains(ThemeEnvironment.self) // true
+environmentOverrides.remove(ThemeEnvironment.self)
+```
+
 ### 3. Read & observe in a child
 
 In a child `UIViewController`, you can read the current value via

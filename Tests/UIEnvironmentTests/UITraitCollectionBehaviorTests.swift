@@ -155,6 +155,39 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
     }
 }
 
+@MainActor
+@Test func environmentOverridesContainsReflectsExplicitSpecification() {
+    var overrides = UIEnvironmentOverrides()
+    #expect(overrides.contains(TestFallbackEnvironment.self) == false)
+
+    overrides[TestFallbackEnvironment.self] = 42
+    #expect(overrides.contains(TestFallbackEnvironment.self))
+
+    // Assigning the default value still counts as an explicit override.
+    overrides[TestFallbackEnvironment.self] = TestFallbackEnvironment.defaultValue
+    #expect(overrides.contains(TestFallbackEnvironment.self))
+
+    overrides.remove(TestFallbackEnvironment.self)
+    #expect(overrides.contains(TestFallbackEnvironment.self) == false)
+    // After removal the definition resolves to its default again.
+    #expect(overrides[TestFallbackEnvironment.self] == TestFallbackEnvironment.defaultValue)
+}
+
+@available(iOS 17.0, *)
+@MainActor
+@Test func environmentOverrideRemoveClearsResolutionAndNativeTrait() {
+    let view = UIView()
+    view.environmentOverrides[TestBridgedStringEnvironment.self] = "set"
+    #expect(view.environments[TestBridgedStringEnvironment.self] == "set")
+
+    view.environmentOverrides.remove(TestBridgedStringEnvironment.self)
+
+    #expect(view.environmentOverrides.contains(TestBridgedStringEnvironment.self) == false)
+    #expect(view.environments[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+    // The removal is mirrored out of the native trait overrides as well.
+    #expect(view.traitOverrides.contains(TestBridgedStringEnvironment.self) == false)
+}
+
 @available(iOS 17.0, *)
 @MainActor
 @Test func registerForEnvironmentChangesCanRegisterAndUnregisterBridgedDefinitions() {
