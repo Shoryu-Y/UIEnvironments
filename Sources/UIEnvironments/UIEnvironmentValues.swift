@@ -119,6 +119,31 @@ struct UIEnvironmentValues: Sendable {
     }
 }
 
+@available(iOS 17.0, *)
+extension UIEnvironmentValues {
+    /// Creates a snapshot by overlaying bridged trait reads onto base entries.
+    ///
+    /// `baseEntries` supplies every other key at its callback-time value; the
+    /// entry for each of `definitions` is then overwritten with the value read
+    /// from `traitCollection`.
+    ///
+    init(
+        bridging traitCollection: UITraitCollection,
+        definitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type],
+        baseEntries: [ObjectIdentifier: UIEnvironmentOverrides.Entry]
+    ) {
+        var entries = baseEntries
+        for definition in definitions {
+            entries[ObjectIdentifier(definition)] = UIEnvironmentOverrides.Entry(
+                definition: definition,
+                value: definition._traitBridgeRead(from: traitCollection)
+            )
+        }
+
+        self.init(entries: entries)
+    }
+}
+
 /// Compares two boxed environment values the way `UITraitCollection` compares
 /// boxed custom trait values with `isEqual:`.
 ///

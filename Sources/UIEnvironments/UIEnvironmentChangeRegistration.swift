@@ -8,14 +8,15 @@ public struct UIEnvironmentChangeRegistration: Sendable {
     var identifiers: Set<ObjectIdentifier>
     /// Callback invoked when an observed value changes.
     ///
-    /// The previous resolved values (limited to the observed definitions) are
-    /// passed so callers can compare against the current environment.
+    /// The previous environment values are passed so callers can compare
+    /// against the current environment. Values are exact for the observed
+    /// definitions; every other key is frozen at its callback-time value.
     ///
-    var action: @Sendable @MainActor (_ previousValues: UIEnvironmentValues) -> Void
+    var action: @Sendable @MainActor (_ previousEnvironments: UIEnvironments) -> Void
 
     init(
         definitions: [any UIEnvironmentDefinition.Type],
-        action: @Sendable @escaping @MainActor (_ previousValues: UIEnvironmentValues) -> Void
+        action: @Sendable @escaping @MainActor (_ previousEnvironments: UIEnvironments) -> Void
     ) {
         self.definitions = definitions
         identifiers = Set(definitions.map { ObjectIdentifier($0) })

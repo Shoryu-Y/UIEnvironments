@@ -15,7 +15,7 @@ public extension UIView {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
-        registerForEnvironmentChanges(definitions) { (_: UIView) in
+        registerForEnvironmentChanges(definitions) { _, _ in
             action()
         }
     }
@@ -23,22 +23,24 @@ public extension UIView {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable @MainActor (_ environment: UIView) -> Void
+        action: @escaping @Sendable @MainActor (_ environment: UIView, _ previousEnvironments: UIEnvironments) -> Void
     ) -> UIEnvironmentChangeRegistration {
-        let boxedAction: @Sendable @MainActor (UIEnvironmentValues) -> Void = { [weak self] _ in
+        let boxedAction: @Sendable @MainActor (UIEnvironments) -> Void = { [weak self] previousEnvironments in
             guard let self else { return }
-            action(self)
+            action(self, previousEnvironments)
         }
 
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
 
             for definition in definitions {
                 guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
+                bridgedDefinitions.append(traitDefinition)
             }
 
             if !nativeDefinitionIdentifiers.isEmpty {
@@ -53,8 +55,13 @@ public extension UIView {
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIView, _: UITraitCollection) in
-                    action(environment)
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIView, previousTraitCollection: UITraitCollection) in
+                    let snapshot = UIEnvironmentValues(
+                        bridging: previousTraitCollection,
+                        definitions: bridgedDefinitions,
+                        baseEntries: environment._inheritedEnvironmentEntries
+                    )
+                    action(environment, UIEnvironments(frozen: snapshot))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in
@@ -95,7 +102,7 @@ public extension UIViewController {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
-        registerForEnvironmentChanges(definitions) { (_: UIViewController) in
+        registerForEnvironmentChanges(definitions) { _, _ in
             action()
         }
     }
@@ -103,22 +110,24 @@ public extension UIViewController {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable @MainActor (_ environment: UIViewController) -> Void
+        action: @escaping @Sendable @MainActor (_ environment: UIViewController, _ previousEnvironments: UIEnvironments) -> Void
     ) -> UIEnvironmentChangeRegistration {
-        let boxedAction: @Sendable @MainActor (UIEnvironmentValues) -> Void = { [weak self] _ in
+        let boxedAction: @Sendable @MainActor (UIEnvironments) -> Void = { [weak self] previousEnvironments in
             guard let self else { return }
-            action(self)
+            action(self, previousEnvironments)
         }
 
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
 
             for definition in definitions {
                 guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
+                bridgedDefinitions.append(traitDefinition)
             }
 
             if !nativeDefinitionIdentifiers.isEmpty {
@@ -133,8 +142,13 @@ public extension UIViewController {
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIViewController, _: UITraitCollection) in
-                    action(environment)
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIViewController, previousTraitCollection: UITraitCollection) in
+                    let snapshot = UIEnvironmentValues(
+                        bridging: previousTraitCollection,
+                        definitions: bridgedDefinitions,
+                        baseEntries: environment._inheritedEnvironmentEntries
+                    )
+                    action(environment, UIEnvironments(frozen: snapshot))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in
@@ -175,7 +189,7 @@ public extension UIWindowScene {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
-        registerForEnvironmentChanges(definitions) { (_: UIWindowScene) in
+        registerForEnvironmentChanges(definitions) { _, _ in
             action()
         }
     }
@@ -183,22 +197,24 @@ public extension UIWindowScene {
     @discardableResult
     func registerForEnvironmentChanges(
         _ definitions: [any UIEnvironmentDefinition.Type],
-        action: @escaping @Sendable @MainActor (_ environment: UIWindowScene) -> Void
+        action: @escaping @Sendable @MainActor (_ environment: UIWindowScene, _ previousEnvironments: UIEnvironments) -> Void
     ) -> UIEnvironmentChangeRegistration {
-        let boxedAction: @Sendable @MainActor (UIEnvironmentValues) -> Void = { [weak self] _ in
+        let boxedAction: @Sendable @MainActor (UIEnvironments) -> Void = { [weak self] previousEnvironments in
             guard let self else { return }
-            action(self)
+            action(self, previousEnvironments)
         }
 
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
 
             for definition in definitions {
                 guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
+                bridgedDefinitions.append(traitDefinition)
             }
 
             if !nativeDefinitionIdentifiers.isEmpty {
@@ -213,8 +229,13 @@ public extension UIWindowScene {
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIWindowScene, _: UITraitCollection) in
-                    action(environment)
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (environment: UIWindowScene, previousTraitCollection: UITraitCollection) in
+                    let snapshot = UIEnvironmentValues(
+                        bridging: previousTraitCollection,
+                        definitions: bridgedDefinitions,
+                        baseEntries: environment._inheritedEnvironmentEntries
+                    )
+                    action(environment, UIEnvironments(frozen: snapshot))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in

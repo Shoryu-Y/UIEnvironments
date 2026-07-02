@@ -141,6 +141,18 @@ final class ChildViewController: UIViewController {
 }
 ```
 
+If you need the previous values to compare against, use the two-argument form,
+mirroring `registerForTraitChanges`: the first argument is the environment
+whose values changed, and the second is the previous values.
+
+```swift
+registerForEnvironmentChanges([ThemeEnvironment.self]) { environment, previousEnvironments in
+    let previousTheme = previousEnvironments.theme
+    let currentTheme = environment.environments.theme
+    print("Background changed: \(previousTheme.backgroundColor) -> \(currentTheme.backgroundColor)")
+}
+```
+
 ### Migrating to UITraitCollection (iOS 17+)
 
 ```diff

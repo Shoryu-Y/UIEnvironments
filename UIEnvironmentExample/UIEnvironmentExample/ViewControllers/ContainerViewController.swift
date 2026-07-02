@@ -91,15 +91,16 @@ final class ChildViewController2: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Observe Theme changes with the notification API. The callback hands
-        // back the environment whose values changed, mirroring how
-        // registerForTraitChanges hands back the object; read the new value
-        // from it. The registration lives as long as this view controller, so
-        // there is no need to unregister it manually.
-        registerForEnvironmentChanges([ThemeEnvironment.self]) { environment in
+        // Observe Theme changes with the notification API. This mirrors
+        // registerForTraitChanges: the first argument is the environment whose
+        // values changed, and the second is the previous values, so the
+        // callback can compare against what changed. The registration lives as
+        // long as this view controller, so there is no need to unregister it
+        // manually.
+        registerForEnvironmentChanges([ThemeEnvironment.self]) { environment, previousEnvironments in
             let currentTheme = environment.environments.theme
             environment.view.backgroundColor = currentTheme.backgroundColor
-            print("Theme changed to \(currentTheme.name)")
+            print("Theme changed: \(previousEnvironments.theme.name) -> \(currentTheme.name)")
         }
     }
 

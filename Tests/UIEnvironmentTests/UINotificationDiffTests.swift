@@ -165,19 +165,41 @@ private extension UIMutableEnvironments {
 }
 
 // The environment overload hands back the responder so the callback can read
-// the newly resolved values on each change.
+// the newly resolved values on each change, plus the previous values so the
+// callback can compare against them, mirroring registerForTraitChanges.
 @MainActor
-@Test func environmentOverloadReadsCurrentValuesOnChange() {
+@Test func environmentOverloadReadsCurrentAndPreviousValuesOnChange() {
     let view = UIView()
 
     var observedCurrent: [Int] = []
-    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { (environment: UIView) in
+    var observedPrevious: [Int] = []
+    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { environment, previousEnvironments in
         observedCurrent.append(environment.environments.diffInt)
+        observedPrevious.append(previousEnvironments[DiffIntEnvironment.self])
     }
 
     view.environmentOverrides.diffInt = 1
     view.environmentOverrides.diffInt = 2
 
     #expect(observedCurrent == [1, 2])
+    #expect(observedPrevious == [DiffIntEnvironment.defaultValue, 1])
     #expect(view.environments.diffInt == 2)
+}
+
+// A user-defined convenience accessor on UIEnvironments (such as `diffInt`
+// here) works on the previous-values snapshot the same way it does on a live
+// instance.
+@MainActor
+@Test func environmentOverloadPreviousValuesSupportConvenienceAccessors() {
+    let view = UIView()
+
+    var observedPrevious: [Int] = []
+    view.registerForEnvironmentChanges([DiffIntEnvironment.self]) { _, previousEnvironments in
+        observedPrevious.append(previousEnvironments.diffInt)
+    }
+
+    view.environmentOverrides.diffInt = 1
+    view.environmentOverrides.diffInt = 2
+
+    #expect(observedPrevious == [DiffIntEnvironment.defaultValue, 1])
 }

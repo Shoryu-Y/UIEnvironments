@@ -199,6 +199,39 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
 
 @available(iOS 17.0, *)
 @MainActor
+@Test func registerForEnvironmentChangesReportsPreviousValueForBridgedDefinition() {
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 640))
+    let view = UIView()
+    window.addSubview(view)
+    window.makeKeyAndVisible()
+    window.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+    var observedPrevious: [String] = []
+    view.registerForEnvironmentChanges([TestBridgedStringEnvironment.self]) { _, previousEnvironments in
+        observedPrevious.append(previousEnvironments[TestBridgedStringEnvironment.self])
+    }
+
+    if UIEnvironments.isNativeTraitBridgeEnabled {
+        view.traitOverrides[TestBridgedStringEnvironment.self] = "first"
+        window.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+        view.traitOverrides[TestBridgedStringEnvironment.self] = "second"
+        window.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+
+        #expect(observedPrevious == [TestBridgedStringEnvironment.defaultValue, "first"])
+    } else {
+        view.environmentOverrides[TestBridgedStringEnvironment.self] = "first"
+        view.environmentOverrides[TestBridgedStringEnvironment.self] = "second"
+
+        #expect(observedPrevious == [TestBridgedStringEnvironment.defaultValue, "first"])
+    }
+}
+
+@available(iOS 17.0, *)
+@MainActor
 @Test func mixedNativeAndFallbackDefinitionsDoNotDuplicateCallbacks() {
     let view = UIView()
     var changeCount = 0

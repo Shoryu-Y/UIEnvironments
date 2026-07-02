@@ -5,9 +5,10 @@ import UIKit
 /// `UIViewController`, `UIWindow`, or `UIWindowScene`.
 ///
 /// This is the environment analog of `UITraitCollection`: the live collection
-/// you read resolved values from. For an immutable point-in-time snapshot of
-/// those values — for example the previous values handed to a change callback —
-/// see ``UIEnvironmentValues``.
+/// you read resolved values from. An instance can also represent an immutable,
+/// point-in-time snapshot of values — for example the previous values handed
+/// to a change callback — in which case its subscript always returns the
+/// captured values instead of resolving against the responder chain.
 ///
 @MainActor public class UIEnvironments {
     /// A cached entry for a resolved environment key.
@@ -59,6 +60,10 @@ import UIKit
     /// re-resolves traits when a view joins a hierarchy.
     ///
     public subscript<Key: UIEnvironmentDefinition>(type: Key.Type) -> Key.Value {
+        if let frozenValues {
+            return frozenValues[type]
+        }
+
         if #available(iOS 17.0, *),
            Self.isNativeTraitBridgeEnabled,
            let traitDefinition = type as? any(UIEnvironmentDefinition & UITraitDefinition).Type
@@ -113,12 +118,26 @@ import UIKit
     /// Owning responder-like object for this environment container.
     weak var owner: _UIEnvironmentsContaining!
 
+    /// Captured values for a frozen instance, or `nil` for a live instance.
+    private let frozenValues: UIEnvironmentValues?
+
     /// Creates a container bound to the specified owner.
     init(_ owner: _UIEnvironmentsContaining) {
         self.owner = owner
+        frozenValues = nil
         lastKnownAttachment = owner._attachmentIdentifier
 
         _ = Self.installHierarchyObservation
+    }
+
+    /// Creates an instance that returns the captured values.
+    ///
+    /// Its subscript always returns the captured values and it does not
+    /// observe hierarchy changes.
+    ///
+    init(frozen values: UIEnvironmentValues) {
+        owner = nil
+        frozenValues = values
     }
 
     /// Overrides defined directly on the owner.
@@ -162,7 +181,7 @@ import UIKit
     /// values).
     ///
     var environmentValues: UIEnvironmentValues {
-        UIEnvironmentValues(entries: owner?._inheritedEnvironmentEntries ?? [:])
+        frozenValues ?? UIEnvironmentValues(entries: owner?._inheritedEnvironmentEntries ?? [:])
     }
 
     /// Adds a registration and records its current observed values as a baseline.
@@ -249,7 +268,12 @@ import UIKit
             guard !currentValues.isEqual(to: previousValues) else { continue }
 
             registrationBaselines[registration.id] = currentValues
-            registration.action(previousValues)
+
+            // Every observed key is exact (from the baseline); every other key
+            // is frozen at its callback-time value.
+            let currentEntries = owner?._inheritedEnvironmentEntries ?? [:]
+            let mergedEntries = currentEntries.merging(previousValues.entries) { _, baseline in baseline }
+            registration.action(UIEnvironments(frozen: UIEnvironmentValues(entries: mergedEntries)))
         }
     }
 
