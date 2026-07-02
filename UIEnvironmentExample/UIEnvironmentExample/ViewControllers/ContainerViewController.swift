@@ -14,10 +14,14 @@ final class ContainerViewController: UIViewController {
     let childViewController1 = ChildViewController1()
     let childViewController2 = ChildViewController2()
 
+    // Themes cycled through on tap to drive the change-notification demo.
+    private let cycledThemes: [Theme] = [.blue, .mint, .orange]
+    private var cycledThemeIndex = 0
+
     let label: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.text = "Hello, World!"
+        label.text = "Tap to change theme"
         return label
     }()
 
@@ -56,10 +60,20 @@ final class ContainerViewController: UIViewController {
             label.centerXAnchor.constraint(equalTo: childViewController2.view.centerXAnchor),
             label.centerYAnchor.constraint(equalTo: childViewController2.view.centerYAnchor),
         ])
+
+        // Tapping cycles the override nearest to childViewController2, so its
+        // registered change observer (see ChildViewController2) fires.
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(cycleChildTheme))
+        view.addGestureRecognizer(tapGesture)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+    }
+
+    @objc private func cycleChildTheme() {
+        cycledThemeIndex = (cycledThemeIndex + 1) % cycledThemes.count
+        childViewController2.view.environmentOverrides.theme = cycledThemes[cycledThemeIndex]
     }
 }
 
@@ -76,6 +90,19 @@ final class ChildViewController1: UIViewController {
 final class ChildViewController2: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        // Observe Theme changes with the notification API. The callback mirrors
+        // registerForTraitChanges: the first argument is the environment whose
+        // values changed (read the new value from it), and the second is a
+        // snapshot of the values as they were before the change. The
+        // registration lives as long as this view controller, so there is no
+        // need to unregister it manually.
+        registerForEnvironmentChanges([ThemeEnvironment.self]) { environment, previousValues in
+            let previousTheme = previousValues[ThemeEnvironment.self]
+            let currentTheme = environment.environments.theme
+            environment.view.backgroundColor = currentTheme.backgroundColor
+            print("Theme changed: \(previousTheme.name) -> \(currentTheme.name)")
+        }
     }
 
     override func viewIsAppearing(_: Bool) {
