@@ -92,7 +92,7 @@ private extension UIMutableEnvironments {
 }
 
 @MainActor
-@Test func registrationFiresOnWindowAttachAndDetach() {
+@Test func registrationFiresOnWindowAttachButNotDetach() {
     let window = UIWindow()
     window.environmentOverrides.moveTestValue = 7
 
@@ -107,9 +107,44 @@ private extension UIMutableEnvironments {
     #expect(changeCount == 1)
     #expect(view.environments.moveTestValue == 7)
 
+    // Detaching from the window does not deliver a change, matching real
+    // UIKit, which does not fire trait-change callbacks for a view removed
+    // from its window (see attachDetachRealUIKitFiringCount). The resolved
+    // value still falls back to the default once detached.
     view.removeFromSuperview()
-    #expect(changeCount == 2)
+    #expect(changeCount == 1)
     #expect(view.environments.moveTestValue == MoveTestEnvironment.defaultValue)
+}
+
+/// Ground truth: real UIKit's `registerForTraitChanges` fires when a view joins
+/// a window but not when it is removed from one.
+@available(iOS 17.0, *)
+@MainActor
+@Test func attachDetachRealUIKitFiringCount() {
+    let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 640))
+    window.traitOverrides[MoveTestTrait.self] = "7"
+    window.makeKeyAndVisible()
+
+    let view = UIView()
+
+    var changeCount = 0
+    let registration = view.registerForTraitChanges([MoveTestTrait.self]) { (_: UIView, _: UITraitCollection) in
+        changeCount += 1
+    }
+    defer { view.unregisterForTraitChanges(registration) }
+
+    window.addSubview(view)
+    window.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+    let afterAttach = changeCount
+
+    view.removeFromSuperview()
+    window.layoutIfNeeded()
+    RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+    let afterDetach = changeCount
+
+    #expect(afterAttach == 1)
+    #expect(afterDetach == afterAttach)
 }
 
 @MainActor
@@ -183,14 +218,13 @@ private extension UIMutableEnvironments {
 
     // Direct addSubview to the sibling branch without an explicit
     // removeFromSuperview first. The window never changes, so only
-    // didMoveToSuperview fires. The resolved value re-resolves correctly, but
-    // registrations do NOT fire (documented limitation): registrations fire on
-    // window changes, and lacking value equality we cannot fire on every
-    // superview change without over-notifying elsewhere.
+    // didMoveToSuperview fires. Diff-driven notification re-resolves the
+    // observed value and fires because it changed (1 -> 2), matching real
+    // UIKit (see directReparentRealUIKitFiringCount).
     sibling.addSubview(view)
 
     #expect(view.environments.moveTestValue == 2)
-    #expect(changeCount == 0)
+    #expect(changeCount == 1)
 }
 
 /// Ground truth: does real UIKit's `registerForTraitChanges` fire for the same
