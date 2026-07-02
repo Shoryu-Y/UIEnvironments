@@ -120,6 +120,15 @@ import UIKit
     var overrides: UIEnvironmentOverrides?
     /// Registered callbacks for environment updates.
     var registrations: [UIEnvironmentChangeRegistration] = []
+    /// Last observed value snapshot per registration.
+    ///
+    /// Every trigger re-resolves the observed definitions and compares them
+    /// against this baseline, so a registration fires only when a value it
+    /// observes actually changes. Storing effective values (a specified value
+    /// or the definition's default) means an unspecified key is represented by
+    /// its default rather than a missing entry.
+    ///
+    private var registrationBaselines: [UUID: UIEnvironmentValues] = [:]
     /// Native trait registration unregistration callbacks.
     private var nativeTraitUnregisterActions: [UUID: @MainActor () -> Void] = [:]
 
@@ -140,13 +149,34 @@ import UIKit
         cache.removeAll(keepingCapacity: true)
     }
 
+    /// A read-only snapshot of the values resolved for the owner.
+    ///
+    /// This is the environment analog of reading `traitCollection`: it walks the
+    /// responder chain and merges every specified override, with the nearest
+    /// responder winning. It reflects the same fallback resolution used by the
+    /// subscript, so it does not consult natively bridged trait values.
+    ///
+    public func resolvedValues() -> UIEnvironmentValues {
+        UIEnvironmentValues(entries: owner?._inheritedEnvironmentEntries ?? [:])
+    }
+
+    /// Adds a registration and records its current observed values as a baseline.
+    func addRegistration(_ registration: UIEnvironmentChangeRegistration) {
+        registrations.append(registration)
+        registrationBaselines[registration.id] = resolvedSnapshot(for: registration.definitions)
+    }
+
+    /// Removes a registration and discards its baseline.
+    func removeRegistration(_ registration: UIEnvironmentChangeRegistration) {
+        registrations.removeAll { $0 == registration }
+        registrationBaselines.removeValue(forKey: registration.id)
+    }
+
     /// Handles the owner joining or leaving a window.
     ///
     /// Mirrors `UITraitCollection`: values are re-resolved against the new
-    /// position, and change registrations fire because their observed values
-    /// may resolve differently now. Environment values are not required to be
-    /// `Equatable`, so registrations fire on every window change rather than
-    /// only on actual value changes.
+    /// position and change registrations are re-evaluated, firing only when an
+    /// observed value actually changed.
     ///
     func handleWindowAttachmentChange() {
         let currentAttachment = owner?._attachmentIdentifier ?? nil
@@ -156,31 +186,85 @@ import UIKit
         lastKnownAttachment = currentAttachment
         cache.removeAll(keepingCapacity: true)
 
-        registrations.forEach { $0.action() }
+        reevaluateRegistrations(changedKeys: nil)
     }
 
     /// Handles the owner being reparented.
     ///
     /// Moving within the same window changes the responder chain without a
-    /// window change, so the cache is cleared eagerly. Registrations are not
-    /// fired here: when the move also changes the window, the window-change
-    /// path fires them, and firing from both hooks would double-notify.
-    /// A same-window reparent therefore refreshes resolved values but does
-    /// not notify registrations (known limitation versus `UITraitCollection`).
+    /// window change, so the cache is cleared eagerly and registrations are
+    /// re-evaluated. Because firing is driven by value differences and the
+    /// baseline is updated as soon as a change is observed, this stays correct
+    /// even when the window-change hook also runs for the same move: whichever
+    /// hook runs first updates the baseline, so the other sees no difference.
     ///
     func handleSuperviewChange() {
         cache.removeAll(keepingCapacity: true)
+
+        reevaluateRegistrations(changedKeys: nil)
     }
 
-    /// Executes registrations that depend on keys included in `overrides`.
-    func notifyRegistrationsNeedUpdate(_ overrides: UIEnvironmentOverrides) {
-        let changedIdentifiers = overrides.identifiers
+    /// Re-evaluates registrations against their baselines, firing on change.
+    ///
+    /// Each registration's observed definitions are re-resolved and compared to
+    /// the value snapshot recorded when it last fired (or when it was
+    /// registered). A registration fires only when an observed value changed,
+    /// after which its baseline is updated and the previous snapshot is handed
+    /// to the callback.
+    ///
+    /// When `changedKeys` is non-`nil` (the override-write path) only
+    /// registrations observing one of those keys are considered, which avoids
+    /// re-resolving registrations that a write cannot affect. Passing `nil`
+    /// (the hierarchy-move paths) considers every registration.
+    ///
+    func reevaluateRegistrations(changedKeys: Set<ObjectIdentifier>?) {
+        let candidates: [UIEnvironmentChangeRegistration]
+        if let changedKeys {
+            candidates = registrations.filter { !$0.identifiers.isDisjoint(with: changedKeys) }
+        } else {
+            // A hierarchy move that leaves the owner outside every window does
+            // not deliver notifications and must leave the baseline untouched,
+            // mirroring `UITraitCollection`: a view removed from its window
+            // receives no trait-change callback, and the value it is compared
+            // against on the next attach is the one last delivered while in a
+            // window, not the detached default. This keeps a reparent
+            // (remove-then-add) from firing twice — once for the transient
+            // detached default and once for the new value. Override writes use
+            // the `changedKeys` path above and still notify window-less
+            // hierarchies.
+            guard owner?._attachmentIdentifier != nil else { return }
 
-        registrations
-            .filter { registration in
-                !registration.identifiers.isDisjoint(with: changedIdentifiers)
-            }
-            .forEach { $0.action() }
+            candidates = registrations
+        }
+
+        for registration in candidates {
+            let previousValues = registrationBaselines[registration.id] ?? UIEnvironmentValues()
+            let currentValues = resolvedSnapshot(for: registration.definitions)
+
+            guard !currentValues.isEqual(to: previousValues) else { continue }
+
+            registrationBaselines[registration.id] = currentValues
+            registration.action(previousValues)
+        }
+    }
+
+    /// Builds a snapshot of the effective resolved values for `definitions`.
+    ///
+    /// Each definition resolves to its nearest override in the responder chain,
+    /// or its default when unspecified, so the snapshot always contains an entry
+    /// per observed definition.
+    ///
+    private func resolvedSnapshot(for definitions: [any UIEnvironmentDefinition.Type]) -> UIEnvironmentValues {
+        guard let owner else { return UIEnvironmentValues() }
+
+        var entries: [ObjectIdentifier: UIEnvironmentOverrides.Entry] = [:]
+        for definition in definitions {
+            let identifier = ObjectIdentifier(definition)
+            let value = owner._inheritedEnvironmentOverrideValue(for: identifier) ?? definition._defaultValueAsSendable
+            entries[identifier] = UIEnvironmentOverrides.Entry(definition: definition, value: value)
+        }
+
+        return UIEnvironmentValues(entries: entries)
     }
 
     /// Stores an unregistration callback for native trait observations.

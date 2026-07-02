@@ -15,14 +15,26 @@ public extension UIView {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
+        registerForEnvironmentChanges(definitions) { (_: UIEnvironmentValues) in
+            action()
+        }
+    }
+
+    @discardableResult
+    func registerForEnvironmentChanges(
+        _ definitions: [any UIEnvironmentDefinition.Type],
+        action: @escaping @Sendable @MainActor (_ previousValues: UIEnvironmentValues) -> Void
+    ) -> UIEnvironmentChangeRegistration {
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
 
             for definition in definitions {
-                guard let traitDefinition = definition as? any UITraitDefinition.Type else { continue }
+                guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
+                bridgedDefinitions.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
             }
 
@@ -34,12 +46,12 @@ public extension UIView {
 
             let registration = UIEnvironmentChangeRegistration(definitions: fallbackDefinitions, action: action)
             if !registration.identifiers.isEmpty {
-                environments.registrations.append(registration)
+                environments.addRegistration(registration)
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIView, _: UITraitCollection) in
-                    action()
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIView, previousTraitCollection: UITraitCollection) in
+                    action(UIEnvironmentValues(bridging: previousTraitCollection, definitions: bridgedDefinitions))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in
@@ -53,14 +65,14 @@ public extension UIView {
 
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         if !registration.identifiers.isEmpty {
-            environments.registrations.append(registration)
+            environments.addRegistration(registration)
         }
 
         return registration
     }
 
     func unregisterFromEnvironmentChanges(_ registration: UIEnvironmentChangeRegistration) {
-        environments.registrations.removeAll(where: { $0 == registration })
+        environments.removeRegistration(registration)
         environments.unregisterNativeTraitObserver(for: registration)
     }
 }
@@ -80,14 +92,26 @@ public extension UIViewController {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
+        registerForEnvironmentChanges(definitions) { (_: UIEnvironmentValues) in
+            action()
+        }
+    }
+
+    @discardableResult
+    func registerForEnvironmentChanges(
+        _ definitions: [any UIEnvironmentDefinition.Type],
+        action: @escaping @Sendable @MainActor (_ previousValues: UIEnvironmentValues) -> Void
+    ) -> UIEnvironmentChangeRegistration {
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
 
             for definition in definitions {
-                guard let traitDefinition = definition as? any UITraitDefinition.Type else { continue }
+                guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
+                bridgedDefinitions.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
             }
 
@@ -99,12 +123,12 @@ public extension UIViewController {
 
             let registration = UIEnvironmentChangeRegistration(definitions: fallbackDefinitions, action: action)
             if !registration.identifiers.isEmpty {
-                environments.registrations.append(registration)
+                environments.addRegistration(registration)
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIViewController, _: UITraitCollection) in
-                    action()
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIViewController, previousTraitCollection: UITraitCollection) in
+                    action(UIEnvironmentValues(bridging: previousTraitCollection, definitions: bridgedDefinitions))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in
@@ -118,14 +142,14 @@ public extension UIViewController {
 
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         if !registration.identifiers.isEmpty {
-            environments.registrations.append(registration)
+            environments.addRegistration(registration)
         }
 
         return registration
     }
 
     func unregisterFromEnvironmentChanges(_ registration: UIEnvironmentChangeRegistration) {
-        environments.registrations.removeAll(where: { $0 == registration })
+        environments.removeRegistration(registration)
         environments.unregisterNativeTraitObserver(for: registration)
     }
 }
@@ -145,14 +169,26 @@ public extension UIWindowScene {
         _ definitions: [any UIEnvironmentDefinition.Type],
         action: @escaping @Sendable @MainActor () -> Void
     ) -> UIEnvironmentChangeRegistration {
+        registerForEnvironmentChanges(definitions) { (_: UIEnvironmentValues) in
+            action()
+        }
+    }
+
+    @discardableResult
+    func registerForEnvironmentChanges(
+        _ definitions: [any UIEnvironmentDefinition.Type],
+        action: @escaping @Sendable @MainActor (_ previousValues: UIEnvironmentValues) -> Void
+    ) -> UIEnvironmentChangeRegistration {
         if #available(iOS 17.0, *), UIEnvironments.isNativeTraitBridgeEnabled {
             var fallbackDefinitions = definitions
             var nativeTraits: [UITrait] = []
+            var bridgedDefinitions: [any (UIEnvironmentDefinition & UITraitDefinition).Type] = []
             var nativeDefinitionIdentifiers: Set<ObjectIdentifier> = []
 
             for definition in definitions {
-                guard let traitDefinition = definition as? any UITraitDefinition.Type else { continue }
+                guard let traitDefinition = definition as? any (UIEnvironmentDefinition & UITraitDefinition).Type else { continue }
                 nativeTraits.append(traitDefinition)
+                bridgedDefinitions.append(traitDefinition)
                 nativeDefinitionIdentifiers.insert(ObjectIdentifier(definition))
             }
 
@@ -164,12 +200,12 @@ public extension UIWindowScene {
 
             let registration = UIEnvironmentChangeRegistration(definitions: fallbackDefinitions, action: action)
             if !registration.identifiers.isEmpty {
-                environments.registrations.append(registration)
+                environments.addRegistration(registration)
             }
 
             if !nativeTraits.isEmpty {
-                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIWindowScene, _: UITraitCollection) in
-                    action()
+                let nativeRegistration = registerForTraitChanges(nativeTraits) { (_: UIWindowScene, previousTraitCollection: UITraitCollection) in
+                    action(UIEnvironmentValues(bridging: previousTraitCollection, definitions: bridgedDefinitions))
                 }
 
                 environments.setNativeTraitUnregisterAction({ [weak self] in
@@ -183,14 +219,14 @@ public extension UIWindowScene {
 
         let registration = UIEnvironmentChangeRegistration(definitions: definitions, action: action)
         if !registration.identifiers.isEmpty {
-            environments.registrations.append(registration)
+            environments.addRegistration(registration)
         }
 
         return registration
     }
 
     func unregisterFromEnvironmentChanges(_ registration: UIEnvironmentChangeRegistration) {
-        environments.registrations.removeAll(where: { $0 == registration })
+        environments.removeRegistration(registration)
         environments.unregisterNativeTraitObserver(for: registration)
     }
 }
