@@ -126,7 +126,10 @@ private struct TestBridgedStringEnvironment: UIEnvironmentDefinition, UITraitDef
     if UIEnvironments.isNativeTraitBridgeEnabled {
         #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == "from-environment")
     } else {
-        #expect(view.traitOverrides[TestBridgedStringEnvironment.self] == TestBridgedStringEnvironment.defaultValue)
+        // In the fallback path the environment write is not mirrored into the
+        // native trait overrides. Reading `traitOverrides` for an unset trait
+        // traps, so assert the absence via `contains` instead of reading it.
+        #expect(view.traitOverrides.contains(TestBridgedStringEnvironment.self) == false)
     }
 
     #expect(view.environments[TestBridgedStringEnvironment.self] == "from-environment")
