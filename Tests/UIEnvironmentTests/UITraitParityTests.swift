@@ -737,6 +737,24 @@ private func assertParity(
 
 @available(iOS 17.0, *)
 @MainActor
+@Test func parity_observerNotifiedWhenReparentingChangesResolvedValue() {
+    assertParity(
+        "observerNotifiedWhenReparentingChangesResolvedValue",
+        operations: [
+            .setPrimary(.branchView, "branch"),
+            .setPrimary(.siblingBranchView, "sibling"),
+            .registerChildViewObserver,
+            // observer 登録済みのまま、解決値が変わる reparent を行う。
+            // 実 UIKit が値変化として通知するかどうかを差分で検証する。
+            .moveChildViewToSiblingBranch,
+            .moveChildViewToBranch,
+            .unregisterChildViewObserver,
+        ]
+    )
+}
+
+@available(iOS 17.0, *)
+@MainActor
 @Test func parity_multiObserverTargetsWithSelectiveUnregister() {
     assertParity(
         "multiObserverTargetsWithSelectiveUnregister",
